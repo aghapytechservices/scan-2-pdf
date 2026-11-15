@@ -242,3 +242,34 @@
 .prose-page h1 { font-weight: 800; letter-spacing: -0.01em; }
 .page-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.75rem 1.5rem; }
 .page-footer nav { display: flex; flex-wrap: wrap; gap: 1.25rem; }
+
+/* Inner pages (help, privacy, terms) */
+.page-head { padding: clamp(2.75rem, 6vw, 4.5rem) 0 clamp(2rem, 4vw, 3rem); }
+.page-head h1 { font-size: clamp(2.6rem, 6vw, 4.2rem); font-weight: 800; font-stretch: 78%; line-height: 0.98; letter-spacing: -0.012em; }
+.page-head .lede { margin-top: 1rem !important; }
+.page-head .meta { margin-top: 0.75rem; color: var(--steel); font-size: 0.95rem; }
+.jump { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.75rem; }
+.jump a { text-decoration: none; padding: 0.45rem 0.85rem; border-radius: 999px; border: 1.5px solid var(--rule); color: var(--ink); font-weight: 700; font-size: 0.95rem; background: #fff; }
+.jump a:hover { border-color: var(--blue); color: var(--blue); }
+.topnav a[aria-current="page"] { color: var(--ink); font-weight: 700; }
+.site a.inline { color: var(--blue); font-weight: 700; text-underline-offset: 3px; }
+.note { margin-top: 2.25rem !important; padding: 0.9rem 1.1rem; border-left: 4px solid #f59e0b; background: #fffbeb; color: #78350f; border-radius: 0 8px 8px 0; max-width: 46rem; font-size: 0.98rem; }
+.side-note { margin-top: 0.85rem !important; color: var(--steel); font-size: 0.98rem; max-width: 26ch; }
+.faq ul { margin: 0 0 1.2rem; padding-left: 1.2rem; list-style: disc; color: #2a3956; display: grid; gap: 0.4rem; max-width: 64ch; }
+.faq pre { margin: 0 0 1.25rem; padding: 1rem 1.1rem; background: var(--ink); color: #e2e8f0; border-radius: 10px; overflow-x: auto; font-size: 0.9rem; line-height: 1.5; }
+.contact { display: flex; justify-content: space-between; align-items: center; gap: 1.5rem 3rem; flex-wrap: wrap; padding: clamp(1.75rem, 4vw, 2.5rem); border-radius: 18px; background: #fff; border: 1px solid var(--rule); }
+.contact p { margin-top: 0.6rem !important; color: #2a3956; max-width: 46ch; }
+.contact-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+
+/* Long-form documents (privacy, terms) */
+.doc { max-width: 68ch; padding-bottom: clamp(3rem, 6vw, 5rem); }
+.doc h2 { font-size: 1.45rem; margin: 2.25rem 0 0.6rem; }
+.doc h3 { margin: 1.5rem 0 0.4rem; }
+.doc p, .doc li { color: #2a3956; }
+.doc p { margin: 0.6rem 0 !important; }
+.doc ul, .doc ol { padding-left: 1.25rem; display: grid; gap: 0.45rem; margin: 0.6rem 0; }
+.doc ul { list-style: disc; } .doc ol { list-style: decimal; }
+.doc a { color: var(--blue); font-weight: 700; text-underline-offset: 3px; }
+.doc code { background: #e6ecf5; padding: 0.05rem 0.35rem; border-radius: 4px; font-size: 0.92em; }
+.doc .summary { padding: 1rem 1.2rem; background: #ecfdf5; border-left: 4px solid var(--beam); border-radius: 0 10px 10px 0; color: #064e3b; }
+@media (max-width: 900px) { .side-note { max-width: none; } }
