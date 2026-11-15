@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Scan 2 PDF — Outlook add-in manifest (add-in only XML manifest).
-  For production: replace every https://localhost:3000 with your hosting URL
-  and generate a new <Id> GUID.
+  Scan 2 PDF — Outlook add-in manifest (add-in only XML manifest). © Aghapy Tech Services.
+  The build (vite.config.ts) writes dist/manifest.xml with every URL pointing at the hosting domain.
 -->
 <OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
