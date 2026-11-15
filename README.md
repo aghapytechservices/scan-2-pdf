@@ -1,6 +1,6 @@
 # Scan 2 PDF — Outlook add-in
 
-*By [Aghapy Tech Services](https://github.com/aghapytechservices)*
+*By [Aghapy Tech Services](https://aghapyts.com)* · **https://scan2pdf.aghapyts.com**
 
 **Download the bridge:** grab `Scan2PdfBridge-win-x64.zip` from the latest
 [Actions build](../../actions/workflows/build-bridge.yml) or from

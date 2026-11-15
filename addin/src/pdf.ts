@@ -54,3 +54,36 @@ export async function buildPdfBase64(pages: PageImage[], title: string): Promise
   const base64 = await doc.saveAsBase64();
   return { base64, size: Math.floor((base64.length * 3) / 4) };
 }
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("Could not read image"));
+    img.src = src;
+  });
+}
+
+/**
+ * Returns the page as a base64 JPEG with its rotation applied to the pixels
+ * (so it shows the right way up in every viewer). Unrotated JPEG scans are passed through untouched.
+ */
+export async function pageToJpegBase64(p: PageImage, quality: number): Promise<string> {
+  const [header, b64] = p.dataUrl.split(",", 2);
+  if (p.rotation === 0 && header.includes("image/jpeg")) return b64;
+
+  const img = await loadImage(p.dataUrl);
+  const quarterTurn = p.rotation % 180 !== 0;
+  const canvas = document.createElement("canvas");
+  canvas.width = quarterTurn ? img.naturalHeight : img.naturalWidth;
+  canvas.height = quarterTurn ? img.naturalWidth : img.naturalHeight;
+
+  const ctx = canvas.getContext("2d")!;
+  ctx.fillStyle = "#fff"; // PNG transparency → white
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.translate(canvas.width / 2, canvas.height / 2);
+  ctx.rotate((p.rotation * Math.PI) / 180);
+  ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
+
+  return canvas.toDataURL("image/jpeg", Math.min(0.95, Math.max(0.4, quality / 100))).split(",", 2)[1];
+}

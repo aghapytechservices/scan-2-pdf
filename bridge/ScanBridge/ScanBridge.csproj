@@ -22,7 +22,7 @@
     <Authors>Aghapy Tech Services</Authors>
     <Copyright>© 2026 Aghapy Tech Services</Copyright>
     <Description>Local scanner bridge for the Scan 2 PDF Outlook add-in</Description>
-    <Version>1.0.3</Version>
+    <Version>1.0.4</Version>
   </PropertyGroup>
 
   <ItemGroup>

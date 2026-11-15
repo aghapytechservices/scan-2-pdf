@@ -1,6 +1,6 @@
 import "./styles.css";
 import { BridgeError, BridgeUnreachableError, ScanBridge, type ColorMode, type PageSize, type ScanSource } from "./bridge";
-import { buildPdfBase64, type PageImage } from "./pdf";
+import { buildPdfBase64, pageToJpegBase64, type PageImage } from "./pdf";
 
 const DEFAULT_BRIDGE_URL = "http://127.0.0.1:52801";
 const SETTINGS_KEY = "scan2pdf-settings";
@@ -30,7 +30,23 @@ const el = {
   bridgeUrl: $<HTMLInputElement>("bridgeUrl"),
   quality: $<HTMLInputElement>("quality"),
   qualityValue: $<HTMLSpanElement>("qualityValue"),
+  fileExt: $<HTMLSpanElement>("fileExt"),
+  attachLabel: $<HTMLSpanElement>("attachLabel"),
+  year: $<HTMLSpanElement>("year"),
+  preview: $<HTMLDivElement>("preview"),
+  previewTitle: $<HTMLSpanElement>("previewTitle"),
+  previewImg: $<HTMLImageElement>("previewImg"),
+  previewInfo: $<HTMLParagraphElement>("previewInfo"),
+  previewPrev: $<HTMLButtonElement>("previewPrev"),
+  previewNext: $<HTMLButtonElement>("previewNext"),
+  previewRotate: $<HTMLButtonElement>("previewRotate"),
+  previewDelete: $<HTMLButtonElement>("previewDelete"),
+  previewClose: $<HTMLButtonElement>("previewClose"),
 };
+
+type OutputFormat = "pdf" | "jpeg";
+const formatRadios = () => Array.from(document.querySelectorAll<HTMLInputElement>('input[name="format"]'));
+const getFormat = (): OutputFormat => (formatRadios().find((r) => r.checked)?.value as OutputFormat) ?? "pdf";
 
 // ---------- State ----------
 let pages: PageImage[] = [];
@@ -45,6 +61,7 @@ interface Settings {
   dpi: number;
   pageSize: PageSize;
   quality: number;
+  format: OutputFormat;
 }
 
 function loadSettings(): Settings {
@@ -56,6 +73,7 @@ function loadSettings(): Settings {
     dpi: 200,
     pageSize: "letter",
     quality: 75,
+    format: "pdf",
   };
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
@@ -74,6 +92,7 @@ function saveSettings() {
     dpi: Number(el.dpi.value),
     pageSize: el.pageSize.value as PageSize,
     quality: Number(el.quality.value),
+    format: getFormat(),
   };
   try {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
@@ -111,6 +130,7 @@ function clearMessage() {
 function refreshButtons() {
   el.scanBtn.disabled = busy || !bridgeOnline || !el.scanner.value;
   el.attachBtn.disabled = busy || pages.length === 0;
+  refreshFormatUi();
   el.scanBtn.textContent = busy && bridgeOnline ? "Working…" : pages.length ? "Scan more pages" : "Scan";
 }
 
@@ -120,9 +140,18 @@ function defaultFileName() {
   return `Scan_${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
 }
 
-function sanitizeFileName(name: string) {
-  const cleaned = name.replace(/\.pdf$/i, "").replace(/[\\/:*?"<>|]+/g, "_").trim();
-  return (cleaned || defaultFileName()) + ".pdf";
+/** File name without extension, safe for attachments. */
+function baseFileName(name: string) {
+  const cleaned = name.replace(/\.(pdf|jpe?g)$/i, "").replace(/[\\/:*?"<>|]+/g, "_").trim();
+  return cleaned || defaultFileName();
+}
+
+function refreshFormatUi() {
+  const jpeg = getFormat() === "jpeg";
+  el.fileExt.textContent = jpeg ? ".jpg" : ".pdf";
+  el.attachLabel.textContent = jpeg
+    ? pages.length > 1 ? `Attach ${pages.length} JPEGs to email` : "Attach JPEG to email"
+    : "Attach PDF to email";
 }
 
 const formatSize = (bytes: number) =>
@@ -138,9 +167,12 @@ function loadImageSize(dataUrl: string): Promise<{ width: number; height: number
   });
 }
 
+let idCounter = 0;
+const newId = () => `p${Date.now().toString(36)}${(idCounter++).toString(36)}`;
+
 async function addPage(dataUrl: string, dpi: number | null) {
   const { width, height } = await loadImageSize(dataUrl);
-  pages.push({ id: crypto.randomUUID(), dataUrl, rotation: 0, dpi, width, height });
+  pages.push({ id: newId(), dataUrl, rotation: 0, dpi, width, height });
 }
 
 function iconButton(label: string, title: string, onClick: () => void, danger = false) {
@@ -159,8 +191,11 @@ function renderPages() {
     const li = document.createElement("li");
     li.className = "thumb group relative overflow-hidden rounded border border-slate-200 bg-slate-50";
 
-    const frame = document.createElement("div");
-    frame.className = "flex aspect-[3/4] items-center justify-center p-1";
+    const frame = document.createElement("button");
+    frame.type = "button";
+    frame.title = "Click to preview";
+    frame.className = "flex aspect-[3/4] w-full cursor-zoom-in items-center justify-center p-1";
+    frame.addEventListener("click", () => openPreview(i));
     const img = document.createElement("img");
     img.src = p.dataUrl;
     img.alt = `Page ${i + 1}`;
@@ -196,6 +231,61 @@ function renderPages() {
   el.emptyHint.classList.toggle("hidden", pages.length > 0);
   el.clearBtn.classList.toggle("hidden", pages.length === 0);
   refreshButtons();
+  renderPreview();
+}
+
+// ---------- Preview ----------
+let previewIndex = -1;
+
+function openPreview(i: number) {
+  previewIndex = i;
+  el.preview.classList.remove("hidden");
+  el.preview.classList.add("flex");
+  renderPreview();
+  el.previewClose.focus();
+}
+
+function closePreview() {
+  previewIndex = -1;
+  el.preview.classList.add("hidden");
+  el.preview.classList.remove("flex");
+}
+
+function renderPreview() {
+  if (previewIndex < 0) return;
+  if (pages.length === 0) return closePreview();
+  previewIndex = Math.min(previewIndex, pages.length - 1);
+  const p = pages[previewIndex];
+
+  el.previewTitle.textContent = `Page ${previewIndex + 1} of ${pages.length}`;
+  el.previewImg.src = p.dataUrl;
+  el.previewImg.alt = `Page ${previewIndex + 1}`;
+  el.previewImg.style.transform = `rotate(${p.rotation}deg)`;
+
+  // When turned sideways, shrink so the rotated page still fits the stage.
+  const stage = el.previewImg.parentElement!.getBoundingClientRect();
+  if (p.rotation % 180 !== 0 && stage.width && stage.height) {
+    const fit = Math.min(stage.width / p.height, stage.height / p.width);
+    const shown = Math.min(stage.width / p.width, stage.height / p.height);
+    el.previewImg.style.scale = String(Math.min(1, fit / shown));
+  } else {
+    el.previewImg.style.scale = "1";
+  }
+
+  const dims = p.dpi
+    ? `${(p.width / p.dpi).toFixed(1)} × ${(p.height / p.dpi).toFixed(1)} in · ${p.dpi} dpi`
+    : `${p.width} × ${p.height} px`;
+  el.previewInfo.textContent = `${dims}${p.rotation ? ` · rotated ${p.rotation}°` : ""}`;
+  el.previewPrev.disabled = previewIndex === 0;
+  el.previewNext.disabled = previewIndex === pages.length - 1;
+}
+
+function stepPreview(delta: number) {
+  const j = previewIndex + delta;
+  if (j >= 0 && j < pages.length) {
+    previewIndex = j;
+    renderPreview();
+  }
 }
 
 function movePage(i: number, delta: number) {
@@ -213,7 +303,9 @@ async function connect() {
   try {
     await bridge.health();
     const scanners = await bridge.listScanners();
-    el.scanner.replaceChildren(
+    const group = document.createElement("optgroup");
+    group.label = `${scanners.length} scanner${scanners.length === 1 ? "" : "s"} available`;
+    group.append(
       ...scanners.map((s) => {
         const o = document.createElement("option");
         o.value = s.id;
@@ -221,11 +313,12 @@ async function connect() {
         return o;
       }),
     );
+    el.scanner.replaceChildren(...(scanners.length ? [group] : []));
     if (settings.scannerId && scanners.some((s) => s.id === settings.scannerId)) el.scanner.value = settings.scannerId;
 
     bridgeOnline = true;
     if (scanners.length === 0) setStatus("noscanner", "Scanner service is running, but no scanner was found.");
-    else setStatus("online", scanners.length === 1 ? "Scanner ready" : `${scanners.length} scanners available`);
+    else setStatus("online", "Scanner ready");
   } catch (err) {
     el.scanner.replaceChildren();
     if (err instanceof BridgeUnreachableError) setStatus("offline", "Scanner service not reachable");
@@ -287,29 +380,54 @@ async function attach() {
   busy = true;
   refreshButtons();
   clearMessage();
-  const name = sanitizeFileName(el.fileName.value);
+  const base = baseFileName(el.fileName.value);
+  const format = getFormat();
+  const tooBig = (size: number, what: string) =>
+    `${what} ${formatSize(size)}, which may exceed your mail server's limit. ` +
+    "Try a lower resolution, grayscale, or lower JPEG quality (Advanced).";
 
   try {
-    showMessage("info", "Creating PDF…");
-    const { base64, size } = await buildPdfBase64(pages, name.replace(/\.pdf$/, ""));
-    if (size > WARN_SIZE_BYTES) {
-      showMessage(
-        "error",
-        `The PDF is ${formatSize(size)}, which may exceed your mail server's limit. ` +
-          "Try a lower resolution, grayscale, or lower JPEG quality (Advanced).",
-      );
-      return;
-    }
-    showMessage("info", `Attaching ${name} (${formatSize(size)})…`);
-    await addAttachment(base64, name);
+    if (format === "pdf") {
+      const name = `${base}.pdf`;
+      showMessage("info", "Creating PDF…");
+      const { base64, size } = await buildPdfBase64(pages, base);
+      if (size > WARN_SIZE_BYTES) return showMessage("error", tooBig(size, "The PDF is"));
 
-    showMessage("success", `Attached ${name} (${pages.length} page${pages.length === 1 ? "" : "s"}, ${formatSize(size)}).`);
+      showMessage("info", `Attaching ${name} (${formatSize(size)})…`);
+      await addAttachment(base64, name);
+      showMessage("success", `Attached ${name} (${pages.length} page${pages.length === 1 ? "" : "s"}, ${formatSize(size)}).`);
+    } else {
+      showMessage("info", "Preparing JPEG images…");
+      const quality = Number(el.quality.value);
+      const files: { name: string; base64: string }[] = [];
+      const digits = String(pages.length).length < 2 ? 2 : String(pages.length).length;
+      for (const [i, p] of pages.entries()) {
+        files.push({
+          name: pages.length === 1 ? `${base}.jpg` : `${base}_${String(i + 1).padStart(digits, "0")}.jpg`,
+          base64: await pageToJpegBase64(p, quality),
+        });
+      }
+      const total = files.reduce((n, f) => n + Math.floor((f.base64.length * 3) / 4), 0);
+      if (total > WARN_SIZE_BYTES) return showMessage("error", tooBig(total, "The images total"));
+
+      for (const [i, f] of files.entries()) {
+        showMessage("info", `Attaching ${f.name} (${i + 1} of ${files.length})…`);
+        await addAttachment(f.base64, f.name);
+      }
+      showMessage(
+        "success",
+        files.length === 1
+          ? `Attached ${files[0].name} (${formatSize(total)}).`
+          : `Attached ${files.length} JPEG images (${formatSize(total)} total).`,
+      );
+    }
+
     pages = [];
     el.fileName.value = defaultFileName();
     renderPages();
   } catch (err) {
     const msg = (err as Office.Error)?.message ?? String(err);
-    showMessage("error", `Couldn't attach the PDF: ${msg}`);
+    showMessage("error", `Couldn't attach the ${format === "pdf" ? "PDF" : "images"}: ${msg}`);
   } finally {
     busy = false;
     refreshButtons();
@@ -354,6 +472,43 @@ Office.onReady((info) => {
   el.quality.value = String(settings.quality);
   el.qualityValue.textContent = String(settings.quality);
   el.fileName.value = defaultFileName();
+  el.year.textContent = String(new Date().getFullYear());
+  for (const r of formatRadios()) {
+    r.checked = r.value === settings.format;
+    r.addEventListener("change", () => {
+      saveSettings();
+      refreshFormatUi();
+    });
+  }
+
+  // Preview controls
+  el.previewClose.addEventListener("click", closePreview);
+  el.previewPrev.addEventListener("click", () => stepPreview(-1));
+  el.previewNext.addEventListener("click", () => stepPreview(1));
+  el.previewRotate.addEventListener("click", () => {
+    const p = pages[previewIndex];
+    if (!p) return;
+    p.rotation = (p.rotation + 90) % 360;
+    renderPages();
+  });
+  el.previewDelete.addEventListener("click", () => {
+    if (previewIndex < 0) return;
+    pages.splice(previewIndex, 1);
+    renderPages();
+  });
+  el.preview.addEventListener("click", (e) => {
+    if (e.target === el.preview || e.target === el.previewImg.parentElement) closePreview();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (previewIndex < 0) return;
+    if (e.key === "Escape") closePreview();
+    else if (e.key === "ArrowLeft") stepPreview(-1);
+    else if (e.key === "ArrowRight") stepPreview(1);
+    else if (e.key.toLowerCase() === "r") el.previewRotate.click();
+    else return;
+    e.preventDefault();
+  });
+  window.addEventListener("resize", renderPreview);
 
   el.retryBtn.addEventListener("click", connect);
   el.scanBtn.addEventListener("click", scan);
