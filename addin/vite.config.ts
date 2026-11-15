@@ -15,10 +15,16 @@ const https =
       }
     : undefined;
 
-// Public URL the add-in is served from. Set ADDIN_URL explicitly, or let Vercel provide its production domain.
+// Public URL the add-in is served from (written into dist/manifest.xml).
+// Order: explicit ADDIN_URL → production domain on Vercel → this deployment's own URL (previews) → local dev.
+const PRODUCTION_URL = "https://scan2pdf.aghapyts.com";
 const addinUrl = (
   process.env.ADDIN_URL ??
-  (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "https://localhost:3000")
+  (process.env.VERCEL_ENV === "production"
+    ? PRODUCTION_URL
+    : process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : "https://localhost:3000")
 ).replace(/\/+$/, "");
 
 /** Writes dist/manifest.xml with every https://localhost:3000 replaced by the hosting URL. */
