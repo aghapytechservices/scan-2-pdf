@@ -58,6 +58,7 @@ public static class WiaScanner
     private const int WIA_ERROR_OFFLINE = unchecked((int)0x80210005);
     private const int WIA_ERROR_COVER_OPEN = unchecked((int)0x80210016);
     private const int WIA_S_NO_DEVICE_AVAILABLE = unchecked((int)0x80210015);
+    private const int E_INVALIDARG = unchecked((int)0x80070057); // surfaces as ArgumentException, not COMException
 
     private static dynamic CreateCom(string progId)
     {
@@ -85,13 +86,18 @@ public static class WiaScanner
     {
         dynamic device = Connect(req.DeviceId);
         var pages = new List<string>();
+        var step = "preparing the scanner";
 
         try
         {
             if (req.Source != ScanSource.Flatbed)
             {
+                step = "selecting the document feeder";
                 int handling = FEEDER | (req.Source == ScanSource.Duplex ? DUPLEX : 0);
-                TrySetProp(device.Properties, WIA_DPS_DOCUMENT_HANDLING_SELECT, handling);
+                if (!TrySetProp(device.Properties, WIA_DPS_DOCUMENT_HANDLING_SELECT, handling))
+                    throw new ScanException(req.Source == ScanSource.Duplex
+                        ? "This scanner doesn't support double-sided feeder scanning. Choose Feeder or Flatbed."
+                        : "This scanner doesn't have a document feeder. Choose Flatbed.", 400);
                 TrySetProp(device.Properties, WIA_DPS_PAGES, 1);
                 TrySetProp(device.Properties, WIA_DPS_PAGE_SIZE, req.PageSize switch
                 {
@@ -105,34 +111,48 @@ public static class WiaScanner
 
             while (pages.Count < maxPages)
             {
+                step = "applying scan settings";
                 dynamic item = device.Items[1];
-                ConfigureItem(item, req);
+                int dpi = ConfigureItem(item, req);
 
+                step = "scanning";
                 dynamic image;
                 try
                 {
                     image = item.Transfer(FormatJpeg);
                 }
-                catch (COMException ex) when (ex.HResult == WIA_ERROR_PAPER_EMPTY)
+                catch (Exception ex) when (ex.HResult == WIA_ERROR_PAPER_EMPTY)
                 {
                     if (pages.Count == 0)
                         throw new ScanException("The document feeder is empty. Load pages and try again.", 409);
                     break; // normal end of an ADF batch
                 }
-                catch (COMException ex) when (ex.HResult == unchecked((int)0x80070057)) // E_INVALIDARG
+                catch (Exception ex) when (ex.HResult == E_INVALIDARG)
                 {
-                    // Driver doesn't support JPEG transfer; take its default (usually BMP) and convert below.
+                    // Driver can't deliver JPEG directly; take its default format (usually BMP) and convert below.
+                    AppLog.Write("JPEG transfer not supported by driver; using default format.");
                     image = item.Transfer();
                 }
 
+                step = "converting the scanned page";
                 pages.Add(Convert.ToBase64String(ToJpegBytes(image, req.JpegQuality)));
+                AppLog.Write($"Page {pages.Count} scanned at {dpi} dpi");
 
                 if (req.Source == ScanSource.Flatbed) break; // one page per flatbed pass
             }
         }
-        catch (COMException ex)
+        catch (ScanException)
+        {
+            throw;
+        }
+        catch (COMException ex) when (IsKnownWiaError(ex.HResult))
         {
             throw Translate(ex);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write($"Scan failed while {step} (HRESULT 0x{ex.HResult:X8})", ex);
+            throw new ScanException($"The scanner reported an error while {step}: {ex.Message} (0x{ex.HResult:X8})");
         }
         finally
         {
@@ -152,6 +172,7 @@ public static class WiaScanner
             {
                 try { return info.Connect(); }
                 catch (COMException ex) { throw Translate(ex); }
+                catch (Exception ex) { throw new ScanException($"Couldn't connect to the scanner: {ex.Message}"); }
             }
         }
         throw new ScanException(string.IsNullOrEmpty(deviceId)
@@ -159,17 +180,24 @@ public static class WiaScanner
             : "The selected scanner is not available.", 404);
     }
 
-    private static void ConfigureItem(dynamic item, ScanRequest req)
+    /// <summary>Applies settings, fitting each to what the driver supports. Returns the resolution actually used.</summary>
+    private static int ConfigureItem(dynamic item, ScanRequest req)
     {
+        dynamic props = item.Properties;
+
         // Intent first: some drivers reset resolution when the intent changes.
-        TrySetProp(item.Properties, WIA_IPS_CUR_INTENT, req.Color switch
+        TrySetProp(props, WIA_IPS_CUR_INTENT, req.Color switch
         {
             ColorMode.Color => 1, ColorMode.Gray => 2, ColorMode.BlackWhite => 4, _ => 1
         });
-        TrySetProp(item.Properties, WIA_IPS_XRES, req.Dpi);
-        TrySetProp(item.Properties, WIA_IPS_YRES, req.Dpi);
-        TrySetProp(item.Properties, WIA_IPS_XPOS, 0);
-        TrySetProp(item.Properties, WIA_IPS_YPOS, 0);
+
+        TrySetProp(props, WIA_IPS_XRES, req.Dpi);
+        TrySetProp(props, WIA_IPS_YRES, req.Dpi);
+        int xDpi = ReadIntProp(props, WIA_IPS_XRES) ?? req.Dpi;
+        int yDpi = ReadIntProp(props, WIA_IPS_YRES) ?? xDpi;
+
+        TrySetProp(props, WIA_IPS_XPOS, 0);
+        TrySetProp(props, WIA_IPS_YPOS, 0);
 
         var (wIn, hIn) = req.PageSize switch
         {
@@ -177,21 +205,31 @@ public static class WiaScanner
             PageSize.Legal => (8.5, 14.0),
             _ => (8.5, 11.0)
         };
-        // Drivers clamp/refuse values beyond the glass size; failures are ignored.
-        TrySetProp(item.Properties, WIA_IPS_XEXTENT, (int)Math.Round(wIn * req.Dpi));
-        TrySetProp(item.Properties, WIA_IPS_YEXTENT, (int)Math.Round(hIn * req.Dpi));
+        // Extents are in pixels at the current resolution; values beyond the glass are clamped to the driver's max.
+        TrySetProp(props, WIA_IPS_XEXTENT, (int)Math.Round(wIn * xDpi));
+        TrySetProp(props, WIA_IPS_YEXTENT, (int)Math.Round(hIn * yDpi));
+
+        return xDpi;
     }
 
     private static byte[] ToJpegBytes(dynamic image, int quality)
     {
         // Some drivers ignore the requested format and return BMP/TIFF — convert (and recompress) via WIA.ImageProcess.
-        dynamic process = CreateCom("WIA.ImageProcess");
-        process.Filters.Add(process.FilterInfos["Convert"].FilterID);
-        dynamic convert = process.Filters[1];
-        SetPropByName(convert.Properties, "FormatID", FormatJpeg);
-        SetPropByName(convert.Properties, "Quality", Math.Clamp(quality, 10, 100));
-        dynamic jpeg = process.Apply(image);
-        return (byte[])jpeg.FileData.BinaryData;
+        try
+        {
+            dynamic process = CreateCom("WIA.ImageProcess");
+            process.Filters.Add(process.FilterInfos["Convert"].FilterID);
+            dynamic convert = process.Filters[1];
+            SetPropByName(convert.Properties, "FormatID", FormatJpeg);
+            SetPropByName(convert.Properties, "Quality", Math.Clamp(quality, 10, 100));
+            dynamic jpeg = process.Apply(image);
+            return (byte[])jpeg.FileData.BinaryData;
+        }
+        catch (Exception ex) when (IsJpeg(image))
+        {
+            AppLog.Write("JPEG recompression failed; using the scanner's JPEG as-is.", ex);
+            return (byte[])image.FileData.BinaryData;
+        }
     }
 
     private static ScanException Translate(COMException ex) => ex.HResult switch
@@ -207,17 +245,92 @@ public static class WiaScanner
 
     // ---- property helpers (iterate instead of indexing: most robust with late-bound WIA) ----
 
-    private static void TrySetProp(dynamic props, int id, object value)
+    /// <summary>
+    /// Sets a WIA property, first fitting the value to the driver's allowed range or list.
+    /// Never throws: returns false (and logs) if the property is missing, read-only or rejected.
+    /// </summary>
+    private static bool TrySetProp(dynamic props, int id, int value)
+    {
+        object? found = FindProp(props, id);
+        if (found is null) return false;
+        dynamic prop = found;
+
+        int fitted = value;
+        try { fitted = FitToCapabilities(prop, value); }
+        catch (Exception ex) { AppLog.Write($"Couldn't read limits of property {id}: {ex.Message}"); }
+
+        try
+        {
+            if ((bool)prop.IsReadOnly) return false;
+            prop.Value = fitted;
+            if (fitted != value) AppLog.Write($"Property {id}: requested {value}, scanner supports {fitted}");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write($"Scanner rejected property {id} = {fitted}: {ex.Message} (0x{ex.HResult:X8})");
+            return false;
+        }
+    }
+
+    private static int FitToCapabilities(dynamic prop, int value)
+    {
+        switch ((int)prop.SubType)
+        {
+            case 1: // range
+            {
+                int min = Convert.ToInt32(prop.SubTypeMin), max = Convert.ToInt32(prop.SubTypeMax);
+                int step = Math.Max(1, Convert.ToInt32(prop.SubTypeStep));
+                int v = Math.Clamp(value, min, max);
+                int snapped = min + (int)Math.Round((v - min) / (double)step) * step;
+                return Math.Min(snapped, max);
+            }
+            case 2: // list
+            {
+                int? best = null;
+                foreach (object o in prop.SubTypeValues)
+                {
+                    int candidate = Convert.ToInt32(o);
+                    if (best is null || Math.Abs(candidate - value) < Math.Abs(best.Value - value)) best = candidate;
+                }
+                return best ?? value;
+            }
+            default: // unspecified / flags
+                return value;
+        }
+    }
+
+    private static object? FindProp(dynamic props, int id)
     {
         try
         {
             foreach (dynamic p in props)
-            {
-                if ((int)p.PropertyID == id) { p.Value = value; return; }
-            }
+                if ((int)p.PropertyID == id) return (object)p;
         }
-        catch (COMException) { /* unsupported by this driver — ignore */ }
+        catch (Exception ex) { AppLog.Write($"Couldn't enumerate properties: {ex.Message}"); }
+        return null;
     }
+
+    private static int? ReadIntProp(dynamic props, int id)
+    {
+        try
+        {
+            object? p = FindProp(props, id);
+            if (p is null) return null;
+            return Convert.ToInt32(((dynamic)p).Value);
+        }
+        catch { return null; }
+    }
+
+    private static bool IsJpeg(dynamic image)
+    {
+        try { return string.Equals((string)image.FormatID, FormatJpeg, StringComparison.OrdinalIgnoreCase); }
+        catch { return false; }
+    }
+
+    private static bool IsKnownWiaError(int hr) =>
+        hr is WIA_ERROR_PAPER_JAM or WIA_ERROR_BUSY or WIA_ERROR_OFFLINE or WIA_ERROR_COVER_OPEN
+            or WIA_S_NO_DEVICE_AVAILABLE or WIA_ERROR_PAPER_EMPTY;
 
     private static void SetPropByName(dynamic props, string name, object value)
     {
