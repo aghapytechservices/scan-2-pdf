@@ -146,6 +146,8 @@ attach anything over 20 MB and explains how to make it smaller.
 
 - **Outlook add-ins store (Microsoft Marketplace):** step-by-step guide, listing text and reviewer notes in
   [`docs/marketplace/SUBMISSION.md`](docs/marketplace/SUBMISSION.md).
+- **Microsoft Store edition of the bridge (free signing, no SmartScreen warning):**
+  [`docs/store/STORE-SUBMISSION.md`](docs/store/STORE-SUBMISSION.md)
 - **Code signing the bridge:** [`docs/signing/CODE-SIGNING.md`](docs/signing/CODE-SIGNING.md). The release workflow
   signs automatically once the certificate secrets are added.
 - **Policies:** [Privacy](https://scan2pdf.aghapyts.com/privacy.html) ·
