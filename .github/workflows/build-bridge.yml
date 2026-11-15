@@ -19,6 +19,12 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
+    env:
+      # Code signing is optional: each method runs only when its secrets are set (Settings → Secrets → Actions).
+      #   SSL.com eSigner (cloud):  ES_USERNAME, ES_PASSWORD, ES_TOTP_SECRET, ES_CREDENTIAL_ID (optional)
+      #   Certificate file (.pfx):  CODE_SIGNING_PFX (base64 of the .pfx), CODE_SIGNING_PFX_PASSWORD
+      ES_USERNAME: ${{ secrets.ES_USERNAME }}
+      CODE_SIGNING_PFX: ${{ secrets.CODE_SIGNING_PFX }}
     steps:
       - uses: actions/checkout@v4
 
@@ -35,12 +41,62 @@ jobs:
           -p:EnableCompressionInSingleFile=true
           -o publish
 
+      # ---------- Code signing ----------
+      - name: Sign exe (SSL.com eSigner)
+        if: env.ES_USERNAME != ''
+        uses: sslcom/esigner-codesign@develop
+        with:
+          command: sign
+          username: ${{ secrets.ES_USERNAME }}
+          password: ${{ secrets.ES_PASSWORD }}
+          credential_id: ${{ secrets.ES_CREDENTIAL_ID }}
+          totp_secret: ${{ secrets.ES_TOTP_SECRET }}
+          file_path: ${{ github.workspace }}/publish/Scan2PdfBridge.exe
+          output_path: ${{ github.workspace }}/signed
+          environment_name: PROD
+          malware_block: false
+
+      - name: Use eSigner output
+        if: env.ES_USERNAME != ''
+        shell: pwsh
+        run: Copy-Item signed/Scan2PdfBridge.exe publish/Scan2PdfBridge.exe -Force
+
+      - name: Sign exe (certificate file)
+        if: env.ES_USERNAME == '' && env.CODE_SIGNING_PFX != ''
+        shell: pwsh
+        env:
+          PFX_PASSWORD: ${{ secrets.CODE_SIGNING_PFX_PASSWORD }}
+        run: |
+          $pfx = Join-Path $env:RUNNER_TEMP "codesign.pfx"
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:CODE_SIGNING_PFX))
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" |
+            Sort-Object FullName -Descending | Select-Object -First 1
+          & $signtool.FullName sign /f $pfx /p $env:PFX_PASSWORD /fd SHA256 `
+            /tr http://timestamp.digicert.com /td SHA256 `
+            /d "Scan 2 PDF Bridge" /du "https://scan2pdf.aghapyts.com" publish\Scan2PdfBridge.exe
+          if ($LASTEXITCODE -ne 0) { throw "signtool failed" }
+          Remove-Item $pfx -Force
+
+      - name: Report signature
+        shell: pwsh
+        run: |
+          $sig = Get-AuthenticodeSignature publish/Scan2PdfBridge.exe
+          if ($sig.Status -eq 'Valid') {
+            "Signed by: $($sig.SignerCertificate.Subject)" >> $env:GITHUB_STEP_SUMMARY
+            Write-Host "Signature valid: $($sig.SignerCertificate.Subject)"
+          } elseif ($env:ES_USERNAME -or $env:CODE_SIGNING_PFX) {
+            throw "Signing was configured but the exe signature is $($sig.Status)"
+          } else {
+            "⚠️ Unsigned build (no signing secrets configured)" >> $env:GITHUB_STEP_SUMMARY
+            Write-Host "Unsigned build"
+          }
+
       - name: Package with install scripts
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force out/Scan2PdfBridge | Out-Null
           Copy-Item publish/Scan2PdfBridge.exe, publish/appsettings.json out/Scan2PdfBridge/
-          Copy-Item bridge/install.ps1, bridge/uninstall.ps1 out/Scan2PdfBridge/
+          Copy-Item bridge/install.ps1, bridge/uninstall.ps1, LICENSE out/Scan2PdfBridge/
           Compress-Archive -Path out/Scan2PdfBridge -DestinationPath Scan2PdfBridge-win-x64.zip -Force
 
       - uses: actions/upload-artifact@v4

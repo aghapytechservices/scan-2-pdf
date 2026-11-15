@@ -9,14 +9,14 @@
            xmlns:mailappor="http://schemas.microsoft.com/office/mailappversionoverrides/1.0"
            xsi:type="MailApp">
   <Id>daf2cc63-4bd4-4b33-9b75-85f39792fa96</Id>
-  <Version>1.0.0.0</Version>
+  <Version>1.1.0.0</Version>
   <ProviderName>Aghapy Tech Services</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="Scan 2 PDF"/>
   <Description DefaultValue="Scan documents from a local scanner and attach them to the email as a PDF."/>
   <IconUrl DefaultValue="https://localhost:3000/assets/icon-64.png"/>
   <HighResolutionIconUrl DefaultValue="https://localhost:3000/assets/icon-128.png"/>
-  <SupportUrl DefaultValue="https://localhost:3000/taskpane.html"/>
+  <SupportUrl DefaultValue="https://localhost:3000/support.html"/>
   <AppDomains>
     <AppDomain>https://localhost:3000</AppDomain>
   </AppDomains>

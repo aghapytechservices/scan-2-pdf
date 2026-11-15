@@ -141,6 +141,17 @@ A Letter page at 200 dpi in color with JPEG quality 75 is typically 150–400 KB
 use grayscale, lower the resolution to 150 dpi, or lower JPEG quality under **Advanced**. The task pane refuses to
 attach anything over 20 MB and explains how to make it smaller.
 
+## Publishing, signing and policies
+
+- **Outlook add-ins store (Microsoft Marketplace):** step-by-step guide, listing text and reviewer notes in
+  [`docs/marketplace/SUBMISSION.md`](docs/marketplace/SUBMISSION.md).
+- **Code signing the bridge:** [`docs/signing/CODE-SIGNING.md`](docs/signing/CODE-SIGNING.md). The release workflow
+  signs automatically once the certificate secrets are added.
+- **Policies:** [Privacy](https://scan2pdf.aghapyts.com/privacy.html) ·
+  [Terms](https://scan2pdf.aghapyts.com/terms.html) · [Support](https://scan2pdf.aghapyts.com/support.html)
+- **Demo scanner:** when Windows reports no scanner, the bridge offers "Demo scanner (sample pages)" so the add-in
+  can be tried without hardware.
+
 ## Known limitations / next steps
 
 - WIA only. Scanners with TWAIN-only drivers need a TWAIN backend (e.g. NTwain) behind the same API.
@@ -151,4 +162,4 @@ attach anything over 20 MB and explains how to make it smaller.
 ## Credits
 
 Scan 2 PDF is developed and maintained by **Aghapy Tech Services**.
-© 2026 Aghapy Tech Services. All rights reserved unless a license file states otherwise.
+© 2026 Aghapy Tech Services. Released under the [MIT License](LICENSE).

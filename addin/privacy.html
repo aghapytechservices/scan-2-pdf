@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Privacy Policy · Scan 2 PDF</title>
+    <link rel="icon" type="image/png" href="/assets/icon-32.png" />
+    <script type="module" src="/src/landing.ts"></script>
+  </head>
+  <body class="bg-slate-50 text-slate-800">
+    <main class="prose-page mx-auto max-w-2xl px-5 py-12">
+      <a href="/" class="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-800">
+        <img src="/assets/icon-32.png" alt="" class="h-6 w-6 rounded" /> Scan 2 PDF for Outlook
+      </a>
+
+      <h1>Privacy Policy</h1>
+      <p class="meta">Last updated: November 14, 2026</p>
+
+      <p>Scan 2 PDF ("the add-in") is published by Aghapy Tech Services. This policy explains what happens to your
+      information when you use the Scan 2 PDF Outlook add-in, the Scan 2 PDF Bridge app for Windows, and this website.</p>
+
+      <h2>Summary</h2>
+      <p><b>Your scanned documents never leave your computer except as attachments to the email you are writing.</b>
+      Aghapy Tech Services does not receive, store, or have access to your scans, your emails, or your Microsoft 365 account.</p>
+
+      <h2>What the add-in does with your data</h2>
+      <ul>
+        <li><b>Scanned pages.</b> The Scan 2 PDF Bridge app runs on your own PC and reads images from your scanner.
+          It sends them only to the add-in running on the same PC (over the local loopback address 127.0.0.1).
+          The add-in builds the PDF or JPEG files in your browser and adds them to your email through Outlook.
+          No scan is uploaded to any server operated by Aghapy Tech Services.</li>
+        <li><b>Your email.</b> The add-in only adds attachments to the message you are composing. It does not read
+          your message contents, recipients, mailbox, or contacts.</li>
+        <li><b>Settings.</b> Your scan preferences (scanner, resolution, color, paper size, output format) are stored
+          in your browser's local storage on your device. They are not sent to us.</li>
+        <li><b>Bridge log.</b> The bridge keeps a small log file on your PC
+          (<code>%LOCALAPPDATA%\Scan2PdfBridge\logs</code>) with technical events such as "scan started" and error
+          messages, to help with troubleshooting. It contains no images and is never sent anywhere automatically.</li>
+      </ul>
+
+      <h2>This website and hosting</h2>
+      <p>The add-in's web files are hosted on Vercel. Like most web hosts, Vercel may process standard technical
+      information (such as IP address, browser type, and request time) in server logs to deliver and secure the
+      service. We do not use cookies, analytics, advertising, or tracking on this site or in the add-in.</p>
+
+      <h2>Microsoft</h2>
+      <p>Outlook and Microsoft 365 are provided by Microsoft. Your use of them is covered by Microsoft's own privacy
+      statement. Attachments you add are handled by Outlook and your mail service like any other attachment.</p>
+
+      <h2>Children</h2>
+      <p>The add-in is a business productivity tool and is not directed at children.</p>
+
+      <h2>Changes</h2>
+      <p>If we change this policy, we will update the date above and publish the new version on this page.</p>
+
+      <h2>Contact</h2>
+      <p>Questions about privacy: contact Aghapy Tech Services through
+      <a href="https://aghapyts.com">aghapyts.com</a> or open an issue on
+      <a href="https://github.com/aghapytechservices/scan-2-pdf/issues">GitHub</a>.</p>
+
+      <footer class="mt-12 border-t border-slate-200 pt-4 text-xs text-slate-500">
+        © 2026 <a class="underline" href="https://aghapyts.com">Aghapy Tech Services</a> ·
+        <a class="underline" href="/privacy.html">Privacy</a> ·
+        <a class="underline" href="/terms.html">Terms</a> ·
+        <a class="underline" href="/support.html">Support</a>
+      </footer>
+    </main>
+  </body>
+</html>

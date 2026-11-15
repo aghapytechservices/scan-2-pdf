@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Support · Scan 2 PDF</title>
+    <link rel="icon" type="image/png" href="/assets/icon-32.png" />
+    <script type="module" src="/src/landing.ts"></script>
+  </head>
+  <body class="bg-slate-50 text-slate-800">
+    <main class="prose-page mx-auto max-w-2xl px-5 py-12">
+      <a href="/" class="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-800">
+        <img src="/assets/icon-32.png" alt="" class="h-6 w-6 rounded" /> Scan 2 PDF for Outlook
+      </a>
+
+      <h1>Support</h1>
+      <p>Help for the Scan 2 PDF Outlook add-in and the Scan 2 PDF Bridge app.</p>
+
+      <h2>Getting started</h2>
+      <ol>
+        <li>Install the <a href="https://github.com/aghapytechservices/scan-2-pdf/releases/latest">Scan 2 PDF Bridge</a>
+          on your Windows PC: unzip, then right-click <code>install.ps1</code> → <b>Run with PowerShell</b>.</li>
+        <li>In Outlook, start a new email and click <b>Scan to PDF</b> on the ribbon (in new Outlook, under <b>Apps</b>).</li>
+        <li>Choose your scanner and settings, click <b>Scan</b>, then <b>Attach</b>.</li>
+      </ol>
+
+      <h2>Common questions</h2>
+      <h3>The panel says "Scanner service not reachable"</h3>
+      <ul>
+        <li>Check that the Scan 2 PDF icon is in the system tray (click the ^ next to the clock). If not, run
+          <code>Scan2PdfBridge.exe</code> again.</li>
+        <li>If Outlook or your browser asks to let the add-in connect to <b>apps on this device</b>, choose <b>Allow</b>.</li>
+        <li>Open <a href="http://127.0.0.1:52801/">http://127.0.0.1:52801/</a> on the same PC. You should see the
+          bridge status page.</li>
+      </ul>
+      <h3>No scanner is listed</h3>
+      <p>The bridge uses Windows' built-in scanner support (WIA). Make sure the scanner is on and appears in the
+      Windows Scan app. Install the manufacturer's driver if it doesn't.</p>
+      <h3>"Scanner error" when scanning</h3>
+      <p>Try a different resolution or paper size. If it keeps failing, right-click the tray icon →
+      <b>Open log folder</b> and include <code>bridge.log</code> when you contact us.</p>
+      <h3>Does it work on Mac?</h3>
+      <p>The scanner bridge is Windows-only. On other platforms you can still use <b>Add images from file</b> to turn
+      JPG/PNG images into a PDF attachment.</p>
+      <h3>The attachment is too large</h3>
+      <p>Use 150 dpi, grayscale, or a lower JPEG quality (under <b>Advanced</b>).</p>
+
+      <h2>Contact us</h2>
+      <p>Report a problem or request a feature on
+      <a href="https://github.com/aghapytechservices/scan-2-pdf/issues">GitHub Issues</a>, or reach Aghapy Tech Services
+      at <a href="https://aghapyts.com">aghapyts.com</a>.</p>
+
+      <footer class="mt-12 border-t border-slate-200 pt-4 text-xs text-slate-500">
+        © 2026 <a class="underline" href="https://aghapyts.com">Aghapy Tech Services</a> ·
+        <a class="underline" href="/privacy.html">Privacy</a> ·
+        <a class="underline" href="/terms.html">Terms</a> ·
+        <a class="underline" href="/support.html">Support</a>
+      </footer>
+    </main>
+  </body>
+</html>

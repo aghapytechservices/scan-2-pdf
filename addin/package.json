@@ -24,5 +24,7 @@
     "tailwindcss": "^4.0.0",
     "typescript": "^5.6.0",
     "vite": "^6.0.0"
-  }
+  },
+  "license": "MIT",
+  "author": "Aghapy Tech Services (https://aghapyts.com)"
 }

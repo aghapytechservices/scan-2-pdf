@@ -65,6 +65,13 @@ app.Use(async (ctx, next) =>
 
 app.UseCors();
 
+// Real scanners, or the demo scanner when Windows reports none.
+async Task<IReadOnlyList<ScannerInfo>> ListScannersAsync()
+{
+    var real = await StaRunner.Run(WiaScanner.ListScanners);
+    return real.Count > 0 ? real : [DemoScanner.Info];
+}
+
 // One scan at a time — scanners don't share.
 var scanLock = new SemaphoreSlim(1, 1);
 
@@ -73,7 +80,7 @@ app.MapGet("/", async () =>
     string scannersHtml;
     try
     {
-        var scanners = await StaRunner.Run(WiaScanner.ListScanners);
+        var scanners = await ListScannersAsync();
         scannersHtml = scanners.Count == 0
             ? "<p class='warn'>No scanners found. Check the scanner is on, connected, and shows up in the Windows Scan app.</p>"
             : "<ul>" + string.Concat(scanners.Select(s =>
@@ -113,7 +120,7 @@ app.MapGet("/health", () => Results.Ok(new { ok = true, version = TrayApp.Versio
 
 app.MapGet("/scanners", async () =>
 {
-    try { return Results.Ok(await StaRunner.Run(WiaScanner.ListScanners)); }
+    try { return Results.Ok(await ListScannersAsync()); }
     catch (ScanException ex) { return Results.Problem(ex.Message, statusCode: ex.StatusCode); }
 });
 
@@ -128,7 +135,9 @@ app.MapPost("/scan", async (ScanRequest req) =>
     try
     {
         AppLog.Write($"Scan started: {req.Source} {req.Dpi}dpi {req.Color}");
-        var result = await StaRunner.Run(() => WiaScanner.Scan(req, maxPages));
+        var result = req.DeviceId == DemoScanner.Id
+            ? await Task.Run(() => DemoScanner.Scan(req, maxPages))
+            : await StaRunner.Run(() => WiaScanner.Scan(req, maxPages));
         AppLog.Write($"Scan finished: {result.Pages.Count} page(s)");
         return Results.Ok(result);
     }
