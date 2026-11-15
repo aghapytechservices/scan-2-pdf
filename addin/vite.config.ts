@@ -41,6 +41,7 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
+        index: resolve(__dirname, "index.html"),
         taskpane: resolve(__dirname, "taskpane.html"),
         commands: resolve(__dirname, "commands.html"),
       },
