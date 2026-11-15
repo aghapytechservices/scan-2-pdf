@@ -29,7 +29,7 @@ Start-Sleep -Milliseconds 500
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 Copy-Item -Path (Join-Path $SourceDir "*") -Destination $InstallDir -Recurse -Force
 
-$action    = New-ScheduledTaskAction -Execute $exe -WorkingDirectory $InstallDir
+$action    = New-ScheduledTaskAction -Execute $exe -Argument "--background" -WorkingDirectory $InstallDir
 $trigger   = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
 $settings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
                -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
@@ -43,7 +43,8 @@ Start-Sleep -Seconds 2
 
 try {
   $r = Invoke-RestMethod -Uri "http://127.0.0.1:52801/health" -TimeoutSec 5
-  Write-Host "Scan 2 PDF Bridge is running (v$($r.version))." -ForegroundColor Green
+  Write-Host "Scan 2 PDF Bridge is running (v$($r.version)). Look for its icon in the system tray." -ForegroundColor Green
+  Start-Process "http://127.0.0.1:52801/"
 } catch {
   Write-Warning "Installed, but the health check failed. Check $InstallDir and try: & '$exe'"
 }

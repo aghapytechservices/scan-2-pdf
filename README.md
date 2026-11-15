@@ -110,10 +110,22 @@ and progressively to WebView2, which hosts add-ins in new and classic Outlook.
 - If the bridge can't be reached, the task pane says so, lists what to check, and leaves
   **Add images from file** available as a fallback.
 
+## Is the bridge running?
+
+The bridge has no main window. It lives in the **system tray** (click the ^ arrow next to the clock if you don't
+see it). When started by hand it shows a "Scan 2 PDF Bridge is running" notification.
+
+- **Status page:** http://127.0.0.1:52801/ shows the version, detected scanners and allowed add-in origins.
+  Double-click the tray icon, or just run the exe again, to open it.
+- **Exit:** right-click the tray icon → *Exit*.
+- **Problems** (port already in use, bad settings) appear in a message box. Everything is logged to
+  `%LOCALAPPDATA%\Scan2PdfBridge\logs\bridge.log` (tray menu → *Open log folder*).
+
 ## Bridge API
 
 | Method | Path        | Notes |
 |--------|-------------|-------|
+| GET    | `/`         | Human-readable status page |
 | GET    | `/health`   | `{ ok, version }` |
 | GET    | `/scanners` | `[{ id, name, manufacturer }]` |
 | POST   | `/scan`     | Body: `{ deviceId, source: flatbed\|feeder\|duplex, dpi: 75–600, color: color\|gray\|blackWhite, pageSize: letter\|legal\|a4, jpegQuality }` → `{ pages: [base64 JPEG…] }` |
