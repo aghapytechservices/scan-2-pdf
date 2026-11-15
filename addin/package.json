@@ -13,6 +13,8 @@
     "validate": "office-addin-manifest validate manifest.xml"
   },
   "dependencies": {
+    "@fontsource-variable/bricolage-grotesque": "^5.3.0",
+    "@fontsource/atkinson-hyperlegible": "^5.3.0",
     "pdf-lib": "^1.17.1"
   },
   "devDependencies": {
