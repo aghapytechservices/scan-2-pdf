@@ -1,0 +1,6 @@
+{
+  "_comment": "Replace with the values from Partner Center → your app → Product management → Product identity. Until then a test identity is used.",
+  "identityName": "AghapyTechServices.Scan2PDFBridge",
+  "publisher": "CN=Aghapy Tech Services",
+  "publisherDisplayName": "Aghapy Tech Services"
+}

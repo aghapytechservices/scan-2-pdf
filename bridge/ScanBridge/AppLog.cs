@@ -1,10 +1,9 @@
 namespace ScanBridge;
 
-/// <summary>Tiny append-only log in %LOCALAPPDATA%\Scan2PdfBridge\logs (the app has no console).</summary>
+/// <summary>Tiny append-only log in the bridge's data folder (the app has no console).</summary>
 public static class AppLog
 {
-    public static string Folder { get; } =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Scan2PdfBridge", "logs");
+    public static string Folder { get; } = Path.Combine(AppPaths.DataFolder, "logs");
 
     public static string FilePath => Path.Combine(Folder, "bridge.log");
 

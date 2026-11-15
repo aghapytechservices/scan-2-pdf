@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Scan 2 PDF Bridge — MSIX manifest for the Microsoft Store edition. © Aghapy Tech Services.
+  __IDENTITY_NAME__, __PUBLISHER__, __PUBLISHER_DISPLAY_NAME__ and __VERSION__ are filled in by the
+  GitHub workflow from store-identity.json and the project version.
+-->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap uap5 rescap">
+
+  <Identity Name="__IDENTITY_NAME__" Publisher="__PUBLISHER__" Version="__VERSION__" ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>Scan 2 PDF Bridge</DisplayName>
+    <PublisherDisplayName>__PUBLISHER_DISPLAY_NAME__</PublisherDisplayName>
+    <Logo>Images\StoreLogo.png</Logo>
+    <Description>Connects your scanner to the Scan 2 PDF Outlook add-in.</Description>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="en-us" />
+  </Resources>
+
+  <Applications>
+    <Application Id="Scan2PdfBridge" Executable="Scan2PdfBridge.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="Scan 2 PDF Bridge"
+        Description="Connects your scanner to the Scan 2 PDF Outlook add-in."
+        BackgroundColor="transparent"
+        Square150x150Logo="Images\Square150x150Logo.png"
+        Square44x44Logo="Images\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Images\Wide310x150Logo.png" Square71x71Logo="Images\SmallTile.png" Square310x310Logo="Images\LargeTile.png" />
+      </uap:VisualElements>
+
+      <Extensions>
+        <!-- Start at sign-in (Settings → Apps → Startup). TaskId must match StartupManager.TaskId. -->
+        <uap5:Extension Category="windows.startupTask" Executable="Scan2PdfBridge.exe" EntryPoint="Windows.FullTrustApplication">
+          <uap5:StartupTask TaskId="Scan2PdfBridgeStartup" Enabled="true" DisplayName="Scan 2 PDF Bridge" />
+        </uap5:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <!-- Desktop app: drives the scanner through Windows Image Acquisition (WIA) and serves the add-in on 127.0.0.1. -->
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>

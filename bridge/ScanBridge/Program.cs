@@ -11,7 +11,7 @@ const string DefaultUrl = "http://127.0.0.1:52801";
 //   --uninstall   remove start-at-sign-in and the installed files
 string[] ownSwitches = ["--background", "--install", "--uninstall", "--quiet"];
 bool Has(string sw) => args.Contains(sw, StringComparer.OrdinalIgnoreCase);
-var background = Has("--background");
+var background = Has("--background") || StartupManager.LaunchedAtStartup();
 var installRequested = Has("--install");
 var uninstallRequested = Has("--uninstall");
 var quiet = Has("--quiet");
@@ -27,7 +27,8 @@ try
         return;
     }
 
-    if (installRequested || (!background && !Installer.IsRunningFromInstallDir))
+    // The Store (MSIX) edition is installed and updated by the Store, so the self-installer is plain-exe only.
+    if (!AppPaths.IsPackaged && (installRequested || (!background && !Installer.IsRunningFromInstallDir)))
     {
         var proceed = installRequested;
         if (!installRequested)
@@ -67,6 +68,10 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
     ContentRootPath = AppContext.BaseDirectory
 });
 
+// User overrides (e.g. extra allowed origins, another port) live in a writable folder,
+// because the Store edition's install folder is read-only.
+builder.Configuration.AddJsonFile(AppPaths.UserSettingsFile, optional: true, reloadOnChange: false);
+
 if (!builder.Configuration.GetSection("Kestrel:Endpoints").Exists())
     builder.WebHost.UseUrls(DefaultUrl);
 
@@ -79,7 +84,14 @@ if (!isFirstInstance)
     return;
 }
 
-var allowedOrigins = builder.Configuration.GetSection("ScanBridge:AllowedOrigins").Get<string[]>() ?? [];
+// Built-in origins come from appsettings.json; users add their own via ExtraAllowedOrigins
+// (arrays from two config files merge by index, so a separate key avoids overwriting the defaults).
+var allowedOrigins = (builder.Configuration.GetSection("ScanBridge:AllowedOrigins").Get<string[]>() ?? [])
+    .Concat(builder.Configuration.GetSection("ScanBridge:ExtraAllowedOrigins").Get<string[]>() ?? [])
+    .Select(o => o.Trim().TrimEnd('/'))
+    .Where(o => o.Length > 0)
+    .Distinct(StringComparer.OrdinalIgnoreCase)
+    .ToArray();
 var maxPages = builder.Configuration.GetValue("ScanBridge:MaxPages", 100);
 
 builder.Services.ConfigureHttpJsonOptions(o =>
@@ -140,7 +152,7 @@ app.MapGet("/", async () =>
     }
 
     var origins = allowedOrigins.Length == 0
-        ? "<p class='warn'>None configured: the add-in can't connect. Add its web address to <code>ScanBridge:AllowedOrigins</code> in appsettings.json and restart.</p>"
+        ? "<p class='warn'>None configured: the add-in can't connect. Add its web address to <code>ScanBridge:ExtraAllowedOrigins</code> in your overrides file (below) and restart.</p>"
         : "<ul>" + string.Concat(allowedOrigins.Select(o => $"<li><code>{WebUtility.HtmlEncode(o)}</code></li>")) + "</ul>";
 
     var html = $$"""
@@ -156,7 +168,9 @@ app.MapGet("/", async () =>
         <h2>Scanners</h2>{{scannersHtml}}
         <h2>Allowed add-in origins</h2>{{origins}}
         <h2>Files</h2>
-        <p class="muted">Settings: <code>{{WebUtility.HtmlEncode(Path.Combine(AppContext.BaseDirectory, "appsettings.json"))}}</code><br>
+        <p class="muted">Edition: {{(AppPaths.IsPackaged ? "Microsoft Store" : "Standalone")}}<br>
+        Settings: <code>{{WebUtility.HtmlEncode(Path.Combine(AppContext.BaseDirectory, "appsettings.json"))}}</code><br>
+        Your overrides (optional): <code>{{WebUtility.HtmlEncode(AppPaths.UserSettingsFile)}}</code><br>
         Log: <code>{{WebUtility.HtmlEncode(AppLog.FilePath)}}</code></p>
         <footer>© 2026 Aghapy Tech Services</footer>
         </body></html>
@@ -227,6 +241,7 @@ catch (Exception ex)
     return;
 }
 
+StartupManager.EnsureDefaultOn();
 await TrayApp.RunAsync(statusUrl, showStartupBalloon: !background);
 
 AppLog.Write("Stopping (exit from tray)");

@@ -53,15 +53,25 @@ public static class TrayApp
         menu.Items.Add("Open status page", null, (_, _) => OpenUrl(statusUrl));
         menu.Items.Add("Open log folder", null, (_, _) => OpenFolder(AppLog.Folder));
         var startWithWindows = new ToolStripMenuItem("Start with Windows") { CheckOnClick = true };
-        try { startWithWindows.Checked = Installer.IsStartWithWindowsEnabled; } catch { /* registry unavailable */ }
+        try { startWithWindows.Checked = StartupManager.IsEnabled(); } catch { /* unavailable */ }
+        var syncing = false;
         startWithWindows.CheckedChanged += (_, _) =>
         {
-            try { Installer.SetStartWithWindows(startWithWindows.Checked); }
+            if (syncing) return;
+            try
+            {
+                var problem = StartupManager.SetEnabled(startWithWindows.Checked);
+                if (problem is not null) ShowInfo(problem);
+            }
             catch (Exception ex)
             {
                 AppLog.Write("Couldn't change Start with Windows", ex);
                 ShowError("Couldn't change the Start with Windows setting.\n\n" + ex.Message);
             }
+            // Reflect what Windows actually did (e.g. blocked by the user's Startup settings).
+            syncing = true;
+            try { startWithWindows.Checked = StartupManager.IsEnabled(); } catch { }
+            syncing = false;
         };
         menu.Items.Add(startWithWindows);
         menu.Items.Add(new ToolStripSeparator());
