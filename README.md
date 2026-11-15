@@ -79,8 +79,10 @@ Then create a new email → **Scan to PDF** (in the ribbon, or under the **Apps*
 
 ## Deploy to the office
 
-1. **Host the add-in.** `npm run build` and serve `addin/dist/` over HTTPS (Azure Static Web Apps, IIS, etc.).
-   In `manifest.xml`, replace every `https://localhost:3000` with that URL and generate a fresh `<Id>` GUID.
+1. **Host the add-in.** On Vercel: import the repo with **Root Directory = `addin`** (`addin/vercel.json` sets the
+   rest). Any other static host works too: `ADDIN_URL=https://your.host npm run build` and upload `addin/dist/`.
+   The build writes **`dist/manifest.xml` with every URL pointing at your host** (on Vercel it uses the project's
+   production domain automatically), served at `https://your.host/manifest.xml`.
 2. **Allow the origin in the bridge.** In `bridge/ScanBridge/appsettings.json`, set
    `ScanBridge:AllowedOrigins` to your hosting origin (e.g. `https://scan.example.com`). Requests from any other
    web origin are rejected.
