@@ -10,7 +10,8 @@ Center account, taking screenshots in real Outlook, and pressing **Submit**.
 | Privacy policy | https://scan2pdf.aghapyts.com/privacy.html | ✅ |
 | Terms of use (EULA) | https://scan2pdf.aghapyts.com/terms.html | ✅ |
 | Website | https://scan2pdf.aghapyts.com | ✅ |
-| Icons (64 × 64, 128 × 128) | `/assets/icon-64.png`, `/assets/icon-128.png` | ✅ |
+| Icons in manifest (64 × 64, 128 × 128) | `/assets/icon-64.png`, `/assets/icon-128.png` | ✅ |
+| Store listing icon (300 × 300 PNG, ≤ 512 KB) | `branding/scan-2-pdf-icon-300.png` (9.4 KB) | ✅ |
 | Listing text | Below | ✅ |
 | Testing notes for reviewers | Below | ✅ |
 | Demo scanner for reviewers without hardware | Bridge v1.1.0+ | ✅ |
