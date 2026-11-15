@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- WinExe = no console window when launched at logon -->
+    <OutputType>WinExe</OutputType>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <AssemblyName>Scan2PdfBridge</AssemblyName>
+    <RootNamespace>ScanBridge</RootNamespace>
+
+    <!-- Shown in the exe's Properties → Details tab -->
+    <Product>Scan 2 PDF Bridge</Product>
+    <Company>Aghapy Tech Services</Company>
+    <Authors>Aghapy Tech Services</Authors>
+    <Copyright>© 2026 Aghapy Tech Services</Copyright>
+    <Description>Local scanner bridge for the Scan 2 PDF Outlook add-in</Description>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+</Project>
