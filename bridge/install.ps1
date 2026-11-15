@@ -1,50 +1,29 @@
 <#
-  Installs Scan 2 PDF Bridge for the current user and starts it at every logon.
+  Installs (or updates) Scan 2 PDF Bridge for the current Windows user and starts it at sign-in.
 
-  Runs as the logged-in user (not a Windows service) on purpose: many scanner
-  WIA drivers don't work from Session 0 / LocalSystem.
+  You don't need this script: double-clicking Scan2PdfBridge.exe offers to install it.
+  This script is for silent installs (IT / scripted deployment):
 
-  Usage (from the bridge folder):
-    dotnet publish .\ScanBridge -c Release -o .\publish
-    .\install.ps1                      # uses .\publish
+    .\install.ps1                     # uses Scan2PdfBridge.exe next to this script
     .\install.ps1 -SourceDir \\server\share\Scan2PdfBridge
 #>
 param(
-  [string]$SourceDir = $(if (Test-Path (Join-Path $PSScriptRoot "Scan2PdfBridge.exe")) { $PSScriptRoot } else { Join-Path $PSScriptRoot "publish" }),
-  [string]$InstallDir = (Join-Path $env:LOCALAPPDATA "Scan2PdfBridge")
+  [string]$SourceDir = $(if (Test-Path (Join-Path $PSScriptRoot "Scan2PdfBridge.exe")) { $PSScriptRoot } else { Join-Path $PSScriptRoot "publish" })
 )
 
 $ErrorActionPreference = "Stop"
-$taskName = "Scan 2 PDF Bridge"
-$exe = Join-Path $InstallDir "Scan2PdfBridge.exe"
+$exe = Join-Path $SourceDir "Scan2PdfBridge.exe"
+if (-not (Test-Path $exe)) { throw "Scan2PdfBridge.exe not found in $SourceDir" }
 
-if (-not (Test-Path (Join-Path $SourceDir "Scan2PdfBridge.exe"))) {
-  throw "Scan2PdfBridge.exe not found in $SourceDir. Run 'dotnet publish' first."
+# The exe copies itself to %LOCALAPPDATA%\Scan2PdfBridge, enables start at sign-in, and starts.
+Start-Process -FilePath $exe -ArgumentList "--install", "--quiet" -Wait
+
+for ($i = 0; $i -lt 10; $i++) {
+  Start-Sleep -Seconds 1
+  try {
+    $r = Invoke-RestMethod -Uri "http://127.0.0.1:52801/health" -TimeoutSec 2
+    Write-Host "Scan 2 PDF Bridge v$($r.version) is installed and running. It will start automatically at sign-in." -ForegroundColor Green
+    exit 0
+  } catch { }
 }
-
-# Stop a running copy so files can be replaced
-Get-Process Scan2PdfBridge -ErrorAction SilentlyContinue | Stop-Process -Force
-Start-Sleep -Milliseconds 500
-
-New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
-Copy-Item -Path (Join-Path $SourceDir "*") -Destination $InstallDir -Recurse -Force
-
-$action    = New-ScheduledTaskAction -Execute $exe -Argument "--background" -WorkingDirectory $InstallDir
-$trigger   = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
-$settings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
-               -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
-$principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited
-
-Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings `
-  -Principal $principal -Force | Out-Null
-
-Start-ScheduledTask -TaskName $taskName
-Start-Sleep -Seconds 2
-
-try {
-  $r = Invoke-RestMethod -Uri "http://127.0.0.1:52801/health" -TimeoutSec 5
-  Write-Host "Scan 2 PDF Bridge is running (v$($r.version)). Look for its icon in the system tray." -ForegroundColor Green
-  Start-Process "http://127.0.0.1:52801/"
-} catch {
-  Write-Warning "Installed, but the health check failed. Check $InstallDir and try: & '$exe'"
-}
+Write-Warning "Installed, but the bridge didn't answer yet. Check the log: $env:LOCALAPPDATA\Scan2PdfBridge\logs\bridge.log"

@@ -5,9 +5,57 @@ using ScanBridge;
 
 const string DefaultUrl = "http://127.0.0.1:52801";
 
-// "--background" = started by the logon task: no startup balloon. Strip it so ASP.NET config doesn't parse it.
-var background = args.Contains("--background", StringComparer.OrdinalIgnoreCase);
-args = args.Where(a => !a.Equals("--background", StringComparison.OrdinalIgnoreCase)).ToArray();
+// Command-line switches (stripped before ASP.NET parses the rest):
+//   --background  started at sign-in: no notification, and exit quietly if already running
+//   --install     install/update for this user and start at sign-in (add --quiet to skip prompts)
+//   --uninstall   remove start-at-sign-in and the installed files
+string[] ownSwitches = ["--background", "--install", "--uninstall", "--quiet"];
+bool Has(string sw) => args.Contains(sw, StringComparer.OrdinalIgnoreCase);
+var background = Has("--background");
+var installRequested = Has("--install");
+var uninstallRequested = Has("--uninstall");
+var quiet = Has("--quiet");
+args = args.Where(a => !ownSwitches.Contains(a, StringComparer.OrdinalIgnoreCase)).ToArray();
+
+// ---- Install / update / uninstall (before taking the single-instance lock) ----
+try
+{
+    if (uninstallRequested)
+    {
+        Installer.Uninstall();
+        if (!quiet) TrayApp.ShowInfo("Scan 2 PDF Bridge has been removed from this PC.");
+        return;
+    }
+
+    if (installRequested || (!background && !Installer.IsRunningFromInstallDir))
+    {
+        var proceed = installRequested;
+        if (!installRequested)
+        {
+            var updating = File.Exists(Installer.InstalledExe);
+            var answer = TrayApp.Ask(updating
+                ? $"Update the installed Scan 2 PDF Bridge to v{TrayApp.Version}?\n\nThe running copy will restart."
+                : "Install Scan 2 PDF Bridge for this Windows user?\n\n" +
+                  "It will start automatically when you sign in, so the Outlook add-in can always reach your scanner.\n\n" +
+                  "Yes = install    No = just run it this time");
+            if (answer is null) return;   // Cancel
+            proceed = answer.Value;
+        }
+
+        if (proceed)
+        {
+            var exe = Installer.Install();
+            Installer.Launch(exe, background: quiet);
+            return;
+        }
+    }
+}
+catch (Exception ex)
+{
+    AppLog.Write("Install/uninstall failed", ex);
+    TrayApp.ShowError($"Couldn't install Scan 2 PDF Bridge.\n\n{ex.Message}\n\nLog: {AppLog.FilePath}");
+    return;
+}
 
 // ---- Single instance: a second launch just opens the status page of the running one ----
 using var mutex = new Mutex(initiallyOwned: true, @"Local\Scan2PdfBridge", out var isFirstInstance);
@@ -27,7 +75,7 @@ var statusUrl = listenUrl.Replace("://0.0.0.0", "://127.0.0.1").Replace("://*", 
 
 if (!isFirstInstance)
 {
-    TrayApp.OpenUrl(statusUrl);
+    if (!background) TrayApp.OpenUrl(statusUrl); // at sign-in, a duplicate start just exits
     return;
 }
 

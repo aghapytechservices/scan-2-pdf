@@ -4,7 +4,8 @@
 
 **Download the bridge:** grab `Scan2PdfBridge-win-x64.zip` from the latest
 [Actions build](../../actions/workflows/build-bridge.yml) or from
-[Releases](../../releases), unzip it, edit `appsettings.json`, and run `install.ps1`.
+[Releases](../../releases), unzip it, and double-click `Scan2PdfBridge.exe`. It offers to install itself and starts
+automatically at every sign-in.
 
 Adds a **Scan to PDF** button to the ribbon of any new email, reply, or forward. The user scans
 one or more pages (flatbed or document feeder, including duplex), reviews them (reorder, rotate,
@@ -33,7 +34,7 @@ addin/                 Outlook web add-in
   src/pdf.ts           Builds the PDF (pdf-lib), sized from scan DPI
 bridge/
   ScanBridge/          ASP.NET Core minimal API + WIA (Windows only)
-  install.ps1          Per-user install + start at logon (Task Scheduler)
+  install.ps1          Silent per-user install for IT (calls Scan2PdfBridge.exe --install --quiet)
   uninstall.ps1
 ```
 

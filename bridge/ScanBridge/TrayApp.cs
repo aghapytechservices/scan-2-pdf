@@ -52,6 +52,18 @@ public static class TrayApp
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Open status page", null, (_, _) => OpenUrl(statusUrl));
         menu.Items.Add("Open log folder", null, (_, _) => OpenFolder(AppLog.Folder));
+        var startWithWindows = new ToolStripMenuItem("Start with Windows") { CheckOnClick = true };
+        try { startWithWindows.Checked = Installer.IsStartWithWindowsEnabled; } catch { /* registry unavailable */ }
+        startWithWindows.CheckedChanged += (_, _) =>
+        {
+            try { Installer.SetStartWithWindows(startWithWindows.Checked); }
+            catch (Exception ex)
+            {
+                AppLog.Write("Couldn't change Start with Windows", ex);
+                ShowError("Couldn't change the Start with Windows setting.\n\n" + ex.Message);
+            }
+        };
+        menu.Items.Add(startWithWindows);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Exit", null, (_, _) =>
         {
@@ -104,6 +116,18 @@ public static class TrayApp
         }
         catch (Exception ex) { AppLog.Write("Couldn't open " + folder, ex); }
     }
+
+    public static void ShowInfo(string message) =>
+        MessageBox.Show(message, "Scan 2 PDF Bridge", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+    /// <summary>Yes → true, No → false, Cancel/close → null.</summary>
+    public static bool? Ask(string message) =>
+        MessageBox.Show(message, "Scan 2 PDF Bridge", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question) switch
+        {
+            DialogResult.Yes => true,
+            DialogResult.No => false,
+            _ => null
+        };
 
     public static void ShowError(string message) =>
         MessageBox.Show(message, "Scan 2 PDF Bridge", MessageBoxButtons.OK, MessageBoxIcon.Error);

@@ -120,7 +120,7 @@ add-in on http://127.0.0.1:52801. This is disclosed in the long description.
 HOW TO TEST WITHOUT A SCANNER (recommended):
 1. On a Windows 10/11 test PC, download and unzip the latest bridge:
    https://github.com/aghapytechservices/scan-2-pdf/releases/latest (Scan2PdfBridge-win-x64.zip)
-2. Run Scan2PdfBridge.exe (or right-click install.ps1 → Run with PowerShell). A tray icon appears.
+2. Run Scan2PdfBridge.exe and choose Yes (install) or No (run once). A tray icon appears.
 3. When no physical scanner is attached, the bridge offers "Demo scanner (sample pages)", which produces
    realistic sample pages, so every feature can be exercised.
 4. In Outlook, open a new email → Scan to PDF → Scan. Try Feeder to get several pages; click a page to
