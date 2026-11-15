@@ -1,0 +1,19 @@
+# Dependabot: weekly dependency updates + security alerts for every part of the project.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /addin
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 5
+    groups:
+      dev-dependencies:
+        dependency-type: development
+        update-types: [minor, patch]
+
+  - package-ecosystem: nuget
+    directory: /bridge/ScanBridge
+    schedule: { interval: weekly, day: monday }
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly, day: monday }
