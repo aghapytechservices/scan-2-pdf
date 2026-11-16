@@ -24,7 +24,7 @@
     <Authors>Aghapy Tech Services</Authors>
     <Copyright>© 2026 Aghapy Tech Services. MIT License.</Copyright>
     <Description>Local scanner bridge for the Scan 2 PDF Outlook add-in</Description>
-    <Version>1.4.3</Version>
+    <Version>1.5.0</Version>
   </PropertyGroup>
 
   <ItemGroup>

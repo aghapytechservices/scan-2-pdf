@@ -93,6 +93,8 @@ var allowedOrigins = (builder.Configuration.GetSection("ScanBridge:AllowedOrigin
     .Distinct(StringComparer.OrdinalIgnoreCase)
     .ToArray();
 var maxPages = builder.Configuration.GetValue("ScanBridge:MaxPages", 100);
+// "auto" (default): feeder scans use Windows' modern scanner API, falling back to WIA. "wia": always use WIA.
+var feederEngine = (builder.Configuration["ScanBridge:FeederEngine"] ?? "auto").Trim().ToLowerInvariant();
 
 builder.Services.ConfigureHttpJsonOptions(o =>
 {
@@ -211,9 +213,31 @@ app.MapPost("/scan", async (ScanRequest req) =>
     try
     {
         AppLog.Write($"Scan started: {req.Source} {req.Dpi}dpi {req.Color}");
-        var result = req.DeviceId == DemoScanner.Id
-            ? await Task.Run(() => DemoScanner.Scan(req, maxPages))
-            : await StaRunner.Run(() => WiaScanner.Scan(req, maxPages));
+        ScanResult? result = null;
+        if (req.DeviceId == DemoScanner.Id)
+        {
+            result = await Task.Run(() => DemoScanner.Scan(req, maxPages));
+        }
+        else if (req.Source != ScanSource.Flatbed && feederEngine != "wia")
+        {
+            // Feeder: Windows' modern scanner API returns every page of the batch (the older WIA automation
+            // library only returns the first page with some drivers). Falls back to WIA if it can't be used.
+            try
+            {
+                var scanners = await StaRunner.Run(WiaScanner.ListScanners);
+                var name = scanners.FirstOrDefault(x => x.Id == req.DeviceId)?.Name ?? (scanners.Count == 1 ? scanners[0].Name : null);
+                result = await WinRtScanner.TryScanFeederAsync(req, name, maxPages);
+            }
+            catch (ScanException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                AppLog.Write("Modern scanner API failed; falling back to WIA.", ex);
+            }
+        }
+        result ??= await StaRunner.Run(() => WiaScanner.Scan(req, maxPages));
         AppLog.Write($"Scan finished: {result.Pages.Count} page(s)");
         return Results.Ok(result);
     }
