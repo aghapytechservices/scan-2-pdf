@@ -86,54 +86,69 @@ public static class WiaScanner
 
     public static ScanResult Scan(ScanRequest req, int maxPages)
     {
-        dynamic device = Connect(req.DeviceId);
+        bool feeder = req.Source != ScanSource.Flatbed;
+        object device = Connect(req.DeviceId);
         var pages = new List<string>();
         var step = "preparing the scanner";
 
         try
         {
-            if (req.Source != ScanSource.Flatbed)
-            {
-                step = "selecting the document feeder";
-                int handling = FEEDER | (req.Source == ScanSource.Duplex ? DUPLEX : 0);
-                if (!TrySetProp(device.Properties, WIA_DPS_DOCUMENT_HANDLING_SELECT, handling))
-                    throw new ScanException(req.Source == ScanSource.Duplex
-                        ? "This scanner doesn't support double-sided feeder scanning. Choose Feeder or Flatbed."
-                        : "This scanner doesn't have a document feeder. Choose Flatbed.", 400);
-                TrySetProp(device.Properties, WIA_DPS_PAGES, 1);
-                TrySetProp(device.Properties, WIA_DPS_PAGE_SIZE, req.PageSize switch
-                {
-                    PageSize.A4 => 0, PageSize.Letter => 1, PageSize.Legal => 4, _ => 1
-                });
-            }
-            else
-            {
-                TrySetProp(device.Properties, WIA_DPS_DOCUMENT_HANDLING_SELECT, FLATBED);
-            }
+            step = feeder ? "selecting the document feeder" : "preparing the scanner";
+            PrepareDevice(device, req);
+            LogDeviceLayout(device);
+            object item = SelectItem(device, feeder);
 
             // Settings are applied once, before the first page. Re-applying them between feeder pages
-            // makes some drivers reject the next transfer (E_INVALIDARG).
+            // makes some drivers reject the next transfer.
             step = "applying scan settings";
-            dynamic item = device.Items[1];
             int dpi = ConfigureItem(item, req);
             bool jpegUnsupported = false;
+            bool reconnectEachPage = false;
             string? warning = null;
 
             while (pages.Count < maxPages)
             {
+                if (feeder && pages.Count > 0)
+                {
+                    // Ask the feeder whether paper is left, so an empty feeder ends the batch cleanly.
+                    bool? ready = FeederReady(device);
+                    AppLog.Write($"Feeder before page {pages.Count + 1}: {(ready is null ? "status unknown" : ready.Value ? "paper ready" : "empty")}");
+                    if (ready == false) break;
+                    if (reconnectEachPage) (device, item) = Reconnect(device, req, feeder);
+                }
+
                 step = pages.Count == 0 ? "scanning" : $"scanning page {pages.Count + 1}";
-                dynamic? image;
+                object? image;
                 try
                 {
                     image = TransferPage(item, ref jpegUnsupported);
+                }
+                catch (Exception ex) when (feeder && pages.Count > 0 && ex.HResult == E_INVALIDARG && !reconnectEachPage)
+                {
+                    // Some drivers end the feeder session after every sheet: reconnect and ask again.
+                    AppLog.Write("Driver refused the next page on the same connection; reconnecting to the scanner.");
+                    try
+                    {
+                        (device, item) = Reconnect(device, req, feeder);
+                        image = TransferPage(item, ref jpegUnsupported);
+                        if (image is not null)
+                        {
+                            reconnectEachPage = true;
+                            AppLog.Write("Reconnecting worked; using it for the rest of this batch.");
+                        }
+                    }
+                    catch (Exception retry)
+                    {
+                        AppLog.Write($"Reconnect attempt failed (HRESULT 0x{retry.HResult:X8})", retry);
+                        warning = StoppedWarning(retry, pages.Count);
+                        break;
+                    }
                 }
                 catch (Exception ex) when (pages.Count > 0)
                 {
                     // Keep what we have: a later page failing shouldn't throw away the earlier ones.
                     AppLog.Write($"Scanner stopped after {pages.Count} page(s) (HRESULT 0x{ex.HResult:X8})", ex);
-                    warning = ex is COMException ce && IsKnownWiaError(ce.HResult)
-                        ? $"The scanner stopped after {pages.Count} page{(pages.Count == 1 ? "" : "s")}: {Translate(ce).Message}"
-                        : $"The scanner stopped after {pages.Count} page{(pages.Count == 1 ? "" : "s")}. Check the feeder and scan the rest.";
+                    warning = StoppedWarning(ex, pages.Count);
                     break;
                 }
 
@@ -148,7 +163,7 @@ public static class WiaScanner
                 pages.Add(Convert.ToBase64String(ToJpegBytes(image, req.JpegQuality)));
                 AppLog.Write($"Page {pages.Count} scanned at {dpi} dpi");
 
-                if (req.Source == ScanSource.Flatbed) break; // one page per flatbed pass
+                if (!feeder) break; // one page per flatbed pass
             }
 
             AppLog.Write($"Scan complete: {pages.Count} page(s){(warning is null ? "" : " (stopped early)")}");
@@ -169,21 +184,128 @@ public static class WiaScanner
         }
         finally
         {
-            Marshal.FinalReleaseComObject(device);
+            try { Marshal.FinalReleaseComObject(device); } catch { /* already released */ }
+        }
+    }
+
+    private static string StoppedWarning(Exception ex, int count)
+    {
+        var pagesText = $"{count} page{(count == 1 ? "" : "s")}";
+        return ex is COMException ce && IsKnownWiaError(ce.HResult)
+            ? $"The scanner stopped after {pagesText}: {Translate(ce).Message}"
+            : $"The scanner stopped after {pagesText}. Check the feeder and scan the rest.";
+    }
+
+    /// <summary>Device-level settings: feeder/flatbed selection, one page per transfer, paper size.</summary>
+    private static void PrepareDevice(object deviceObj, ScanRequest req)
+    {
+        dynamic device = deviceObj;
+        if (req.Source != ScanSource.Flatbed)
+        {
+            int handling = FEEDER | (req.Source == ScanSource.Duplex ? DUPLEX : 0);
+            if (!TrySetProp(device.Properties, WIA_DPS_DOCUMENT_HANDLING_SELECT, handling) && !HasItemNamed(deviceObj, "feeder"))
+                throw new ScanException(req.Source == ScanSource.Duplex
+                    ? "This scanner doesn't support double-sided feeder scanning. Choose Feeder or Flatbed."
+                    : "This scanner doesn't have a document feeder. Choose Flatbed.", 400);
+            TrySetProp(device.Properties, WIA_DPS_PAGES, 1);
+            TrySetProp(device.Properties, WIA_DPS_PAGE_SIZE, req.PageSize switch
+            {
+                PageSize.A4 => 0, PageSize.Letter => 1, PageSize.Legal => 4, _ => 1
+            });
+        }
+        else
+        {
+            TrySetProp(device.Properties, WIA_DPS_DOCUMENT_HANDLING_SELECT, FLATBED);
         }
     }
 
     /// <summary>
-    /// Transfers one page. Returns null when the feeder is empty, however the driver reports it.
+    /// Newer (WIA 2.0) scanners expose separate "Flatbed" and "Feeder" items; older ones have a single item.
+    /// Use the one matching the chosen source when it exists.
+    /// </summary>
+    private static object SelectItem(object deviceObj, bool feeder)
+    {
+        dynamic device = deviceObj;
+        string wanted = feeder ? "feeder" : "flatbed";
+        try
+        {
+            foreach (dynamic it in device.Items)
+            {
+                var name = ReadProp(it.Properties, "Item Name") ?? "";
+                if (name.Contains(wanted, StringComparison.OrdinalIgnoreCase))
+                {
+                    AppLog.Write($"Using scanner item \"{name}\"");
+                    return (object)it;
+                }
+            }
+        }
+        catch (Exception ex) { AppLog.Write("Couldn't list scanner items", ex); }
+        return (object)device.Items[1];
+    }
+
+    private static bool HasItemNamed(object deviceObj, string part)
+    {
+        dynamic device = deviceObj;
+        try
+        {
+            foreach (dynamic it in device.Items)
+            {
+                string name = ReadProp(it.Properties, "Item Name") ?? "";
+                if (name.Contains(part, StringComparison.OrdinalIgnoreCase)) return true;
+            }
+        }
+        catch { /* treat as not found */ }
+        return false;
+    }
+
+    private static (object Device, object Item) Reconnect(object oldDevice, ScanRequest req, bool feeder)
+    {
+        try { Marshal.FinalReleaseComObject(oldDevice); } catch { /* ignore */ }
+        object device = Connect(req.DeviceId);
+        PrepareDevice(device, req);
+        object item = SelectItem(device, feeder);
+        ConfigureItem(item, req);
+        return (device, item);
+    }
+
+    private const int WIA_DPS_DOCUMENT_HANDLING_CAPABILITIES = 3086;
+    private const int WIA_DPS_DOCUMENT_HANDLING_STATUS = 3087;
+    private const int FEED_READY = 0x001;
+
+    /// <summary>True/false from the feeder's "paper ready" flag, or null if the driver doesn't report it.</summary>
+    private static bool? FeederReady(object deviceObj)
+    {
+        dynamic device = deviceObj;
+        int? status = ReadIntProp(device.Properties, WIA_DPS_DOCUMENT_HANDLING_STATUS);
+        return status is null ? null : (status.Value & FEED_READY) != 0;
+    }
+
+    private static void LogDeviceLayout(object deviceObj)
+    {
+        dynamic device = deviceObj;
+        try
+        {
+            var names = new List<string>();
+            foreach (dynamic it in device.Items) names.Add(ReadProp(it.Properties, "Item Name") ?? "?");
+            int? caps = ReadIntProp(device.Properties, WIA_DPS_DOCUMENT_HANDLING_CAPABILITIES);
+            int? status = ReadIntProp(device.Properties, WIA_DPS_DOCUMENT_HANDLING_STATUS);
+            AppLog.Write($"Scanner items: [{string.Join(", ", names)}]; handling capabilities: {caps?.ToString("X") ?? "n/a"}; status: {status?.ToString("X") ?? "n/a"}");
+        }
+        catch (Exception ex) { AppLog.Write("Couldn't read scanner layout", ex); }
+    }
+
+    /// <summary>
+    /// Transfers one page. Returns null when the feeder is empty.
     /// Falls back from JPEG to the driver's default format once, and remembers that for later pages.
     /// </summary>
-    private static dynamic? TransferPage(dynamic item, ref bool jpegUnsupported)
+    private static object? TransferPage(object itemObj, ref bool jpegUnsupported)
     {
+        dynamic item = itemObj;
         if (!jpegUnsupported)
         {
             try
             {
-                return item.Transfer(FormatJpeg);
+                return (object)item.Transfer(FormatJpeg);
             }
             catch (Exception ex) when (ex.HResult == WIA_ERROR_PAPER_EMPTY)
             {
@@ -191,7 +313,6 @@ public static class WiaScanner
             }
             catch (Exception ex) when (ex.HResult == E_INVALIDARG)
             {
-                // Either the driver can't deliver JPEG, or (some drivers) this is how it signals an empty feeder.
                 AppLog.Write("JPEG transfer rejected by driver; trying its default format.");
                 jpegUnsupported = true;
             }
@@ -199,7 +320,7 @@ public static class WiaScanner
 
         try
         {
-            return item.Transfer();
+            return (object)item.Transfer();
         }
         catch (Exception ex) when (ex.HResult == WIA_ERROR_PAPER_EMPTY)
         {
@@ -226,8 +347,9 @@ public static class WiaScanner
     }
 
     /// <summary>Applies settings, fitting each to what the driver supports. Returns the resolution actually used.</summary>
-    private static int ConfigureItem(dynamic item, ScanRequest req)
+    private static int ConfigureItem(object itemObj, ScanRequest req)
     {
+        dynamic item = itemObj;
         dynamic props = item.Properties;
 
         // Intent first: some drivers reset resolution when the intent changes.
@@ -237,8 +359,10 @@ public static class WiaScanner
         });
 
         TrySetProp(props, WIA_IPS_XRES, req.Dpi);
-        TrySetProp(props, WIA_IPS_YRES, req.Dpi);
         int xDpi = ReadIntProp(props, WIA_IPS_XRES) ?? req.Dpi;
+        // Many drivers move the vertical resolution with the horizontal one; only set it if it differs.
+        if (ReadIntProp(props, WIA_IPS_YRES) is int currentY && currentY != xDpi)
+            TrySetProp(props, WIA_IPS_YRES, xDpi);
         int yDpi = ReadIntProp(props, WIA_IPS_YRES) ?? xDpi;
 
         TrySetProp(props, WIA_IPS_XPOS, 0);
