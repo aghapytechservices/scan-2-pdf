@@ -16,7 +16,9 @@ public record ScanRequest(
     PageSize PageSize = PageSize.Letter,
     int JpegQuality = 75);
 
-public record ScanResult(IReadOnlyList<string> Pages); // base64 JPEG per page
+/// <param name="Pages">base64 JPEG per page</param>
+/// <param name="Warning">Set when the scanner stopped part-way; the pages scanned so far are still returned.</param>
+public record ScanResult(IReadOnlyList<string> Pages, string? Warning = null);
 
 public class ScanException(string message, int statusCode = 500) : Exception(message)
 {
@@ -109,29 +111,37 @@ public static class WiaScanner
                 TrySetProp(device.Properties, WIA_DPS_DOCUMENT_HANDLING_SELECT, FLATBED);
             }
 
+            // Settings are applied once, before the first page. Re-applying them between feeder pages
+            // makes some drivers reject the next transfer (E_INVALIDARG).
+            step = "applying scan settings";
+            dynamic item = device.Items[1];
+            int dpi = ConfigureItem(item, req);
+            bool jpegUnsupported = false;
+            string? warning = null;
+
             while (pages.Count < maxPages)
             {
-                step = "applying scan settings";
-                dynamic item = device.Items[1];
-                int dpi = ConfigureItem(item, req);
-
-                step = "scanning";
-                dynamic image;
+                step = pages.Count == 0 ? "scanning" : $"scanning page {pages.Count + 1}";
+                dynamic? image;
                 try
                 {
-                    image = item.Transfer(FormatJpeg);
+                    image = TransferPage(item, ref jpegUnsupported);
                 }
-                catch (Exception ex) when (ex.HResult == WIA_ERROR_PAPER_EMPTY)
+                catch (Exception ex) when (pages.Count > 0)
+                {
+                    // Keep what we have: a later page failing shouldn't throw away the earlier ones.
+                    AppLog.Write($"Scanner stopped after {pages.Count} page(s) (HRESULT 0x{ex.HResult:X8})", ex);
+                    warning = ex is COMException ce && IsKnownWiaError(ce.HResult)
+                        ? $"The scanner stopped after {pages.Count} page{(pages.Count == 1 ? "" : "s")}: {Translate(ce).Message}"
+                        : $"The scanner stopped after {pages.Count} page{(pages.Count == 1 ? "" : "s")}. Check the feeder and scan the rest.";
+                    break;
+                }
+
+                if (image is null) // feeder empty
                 {
                     if (pages.Count == 0)
                         throw new ScanException("The document feeder is empty. Load pages and try again.", 409);
-                    break; // normal end of an ADF batch
-                }
-                catch (Exception ex) when (ex.HResult == E_INVALIDARG)
-                {
-                    // Driver can't deliver JPEG directly; take its default format (usually BMP) and convert below.
-                    AppLog.Write("JPEG transfer not supported by driver; using default format.");
-                    image = item.Transfer();
+                    break; // normal end of a feeder batch
                 }
 
                 step = "converting the scanned page";
@@ -140,6 +150,9 @@ public static class WiaScanner
 
                 if (req.Source == ScanSource.Flatbed) break; // one page per flatbed pass
             }
+
+            AppLog.Write($"Scan complete: {pages.Count} page(s){(warning is null ? "" : " (stopped early)")}");
+            return new ScanResult(pages, warning);
         }
         catch (ScanException)
         {
@@ -158,8 +171,40 @@ public static class WiaScanner
         {
             Marshal.FinalReleaseComObject(device);
         }
+    }
 
-        return new ScanResult(pages);
+    /// <summary>
+    /// Transfers one page. Returns null when the feeder is empty, however the driver reports it.
+    /// Falls back from JPEG to the driver's default format once, and remembers that for later pages.
+    /// </summary>
+    private static dynamic? TransferPage(dynamic item, ref bool jpegUnsupported)
+    {
+        if (!jpegUnsupported)
+        {
+            try
+            {
+                return item.Transfer(FormatJpeg);
+            }
+            catch (Exception ex) when (ex.HResult == WIA_ERROR_PAPER_EMPTY)
+            {
+                return null;
+            }
+            catch (Exception ex) when (ex.HResult == E_INVALIDARG)
+            {
+                // Either the driver can't deliver JPEG, or (some drivers) this is how it signals an empty feeder.
+                AppLog.Write("JPEG transfer rejected by driver; trying its default format.");
+                jpegUnsupported = true;
+            }
+        }
+
+        try
+        {
+            return item.Transfer();
+        }
+        catch (Exception ex) when (ex.HResult == WIA_ERROR_PAPER_EMPTY)
+        {
+            return null;
+        }
     }
 
     private static dynamic Connect(string? deviceId)

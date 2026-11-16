@@ -378,7 +378,7 @@ async function scan() {
   showMessage("info", source === "flatbed" ? "Scanning…" : "Scanning from the feeder…");
 
   try {
-    const scanned = await bridge.scan({
+    const { pages: scanned, warning } = await bridge.scan({
       deviceId: el.scanner.value || null,
       source,
       dpi,
@@ -388,11 +388,13 @@ async function scan() {
     });
     for (const b64 of scanned) await addPage(`data:image/jpeg;base64,${b64}`, dpi);
     renderPages();
-    showMessage(
-      "success",
-      `Added ${scanned.length} page${scanned.length === 1 ? "" : "s"}.` +
-        (source === "flatbed" ? " Place the next page and scan again, or attach the PDF." : ""),
-    );
+    const added = `Added ${scanned.length} page${scanned.length === 1 ? "" : "s"}.`;
+    if (warning) showMessage("error", `${added} ${warning}`);
+    else
+      showMessage(
+        "success",
+        added + (source === "flatbed" ? " Place the next page and scan again, or attach the PDF." : ""),
+      );
   } catch (err) {
     if (err instanceof BridgeUnreachableError) {
       setStatus("offline", "Lost connection to the scanner service");
