@@ -96,7 +96,9 @@ public static class WinRtScanner
             ImageScannerScanResult result;
             try
             {
-                result = await scanner.ScanFilesToFolderAsync(ImageScannerScanSource.Feeder, folder);
+                var operation = scanner.ScanFilesToFolderAsync(ImageScannerScanSource.Feeder, folder);
+                operation.Progress = (_, pagesSoFar) => ScanProgress.Pages((int)pagesSoFar);
+                result = await operation;
             }
             catch (Exception ex) when (ex.HResult == unchecked((int)0x80210003)) // WIA_ERROR_PAPER_EMPTY
             {

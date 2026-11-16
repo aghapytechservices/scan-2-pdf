@@ -196,6 +196,9 @@ app.MapPost("/store-review", async () =>
     return Results.Ok(new { status });
 });
 
+// Live progress of the current scan (pages so far, elapsed seconds), polled by the add-in.
+app.MapGet("/scan/progress", () => Results.Ok(ScanProgress.Snapshot()));
+
 app.MapGet("/scanners", async () =>
 {
     try { return Results.Ok(await ListScannersAsync()); }
@@ -213,6 +216,7 @@ app.MapPost("/scan", async (ScanRequest req) =>
     try
     {
         AppLog.Write($"Scan started: {req.Source} {req.Dpi}dpi {req.Color}");
+        ScanProgress.Start();
         ScanResult? result = null;
         if (req.DeviceId == DemoScanner.Id)
         {
@@ -253,6 +257,7 @@ app.MapPost("/scan", async (ScanRequest req) =>
     }
     finally
     {
+        ScanProgress.Finish();
         scanLock.Release();
     }
 });

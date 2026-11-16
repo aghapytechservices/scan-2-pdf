@@ -150,6 +150,7 @@ public static class WiaScanner
                 step = "converting the scanned page";
                 pages.Add(Convert.ToBase64String(ToJpegBytes(image, req.JpegQuality)));
                 AppLog.Write($"Page {pages.Count} scanned at {dpi} dpi");
+                ScanProgress.Pages(pages.Count);
 
                 if (!feeder) break; // one page per flatbed pass
             }

@@ -72,6 +72,15 @@ export class ScanBridge {
     return this.request<{ ok: boolean; version: string; edition?: "store" | "standalone" }>("/health", {}, 3000);
   }
 
+  /** Pages received so far in the scan that's running (null if the bridge is older and doesn't report it). */
+  async progress(): Promise<{ active: boolean; pages: number; seconds: number } | null> {
+    try {
+      return await this.request<{ active: boolean; pages: number; seconds: number }>("/scan/progress", {}, 2000);
+    } catch {
+      return null;
+    }
+  }
+
   /** Store edition only: asks the bridge to show the Microsoft Store rating dialog on this PC. */
   requestStoreReview() {
     return this.request<{ status: string }>("/store-review", { method: "POST" }, 120000);

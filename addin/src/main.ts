@@ -377,6 +377,17 @@ async function scan() {
   const source = el.source.value as ScanSource;
   showMessage("info", source === "flatbed" ? "Scanning…" : "Scanning from the feeder…");
 
+  // Show live progress while the scanner works (a full feeder at high resolution can take minutes).
+  const started = Date.now();
+  const clock = (sec: number) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
+  const progressTimer = window.setInterval(async () => {
+    const p = await bridge.progress();
+    const elapsed = clock(Math.floor((Date.now() - started) / 1000));
+    if (!busy) return;
+    if (p && p.pages > 0) showMessage("info", `Scanning… ${p.pages} page${p.pages === 1 ? "" : "s"} so far (${elapsed})`);
+    else showMessage("info", `${source === "flatbed" ? "Scanning" : "Scanning from the feeder"}… (${elapsed})`);
+  }, 1000);
+
   try {
     const { pages: scanned, warning, note } = await bridge.scan({
       deviceId: el.scanner.value || null,
@@ -405,6 +416,7 @@ async function scan() {
       showMessage("error", err instanceof BridgeError ? err.message : `Scan failed: ${String(err)}`);
     }
   } finally {
+    window.clearInterval(progressTimer);
     busy = false;
     refreshButtons();
   }
