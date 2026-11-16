@@ -275,6 +275,13 @@
 .doc .summary { padding: 1rem 1.2rem; background: #ecfdf5; border-left: 4px solid var(--beam); border-radius: 0 10px 10px 0; color: #064e3b; }
 @media (max-width: 900px) { .side-note { max-width: none; } }
 
+/* Microsoft Store badge: show our own button only if Microsoft's badge script doesn't load */
+.store-badge { display: inline-flex; align-items: center; }
+.store-badge .store-fallback { display: none; }
+.store-badge ms-store-badge:not(:defined) { display: none; }
+.store-badge ms-store-badge:not(:defined) + .store-fallback { display: inline-flex; }
+.store-badge ms-store-badge { display: inline-block; line-height: 0; }
+
 /* Share band */
 .share-band { border-top: 1px solid var(--rule); padding: clamp(2.5rem, 5vw, 3.5rem) 0; background: linear-gradient(180deg, #eef3fb, var(--paper)); }
 .share-inner { display: flex; justify-content: space-between; align-items: center; gap: 1.5rem 3rem; flex-wrap: wrap; }

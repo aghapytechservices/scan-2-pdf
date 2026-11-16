@@ -2,7 +2,7 @@
 
 *By [Aghapy Tech Services](https://aghapyts.com)* · **https://scan2pdf.aghapyts.com**
 
-**Get the bridge:** [Scan 2 PDF Bridge in the Microsoft Store](https://apps.microsoft.com/detail/9NNN9ZTWZ9TZ)
+**Get the bridge:** [Scan 2 PDF Bridge in the Microsoft Store](https://apps.microsoft.com/detail/9NNN9ZTWZ9TZ?cid=github-readme)
 (free, signed by Microsoft, auto-updates). A standalone `Scan2PdfBridge-win-x64.zip` is also on
 [Releases](../../releases): unzip and double-click `Scan2PdfBridge.exe`.
 

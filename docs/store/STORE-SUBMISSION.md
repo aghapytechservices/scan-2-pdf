@@ -136,3 +136,22 @@ Microsoft's certification usually takes a few business days. If it fails, send C
 - Send it to Claude so the add-in's help box, the website and the support page point to the Store first.
 - Updating: bump `<Version>` in `bridge/ScanBridge/ScanBridge.csproj`, run the workflow with a new tag, and submit
   the new `-Store.msix` in a new submission. Store users update automatically.
+
+## Campaign IDs (where installs come from)
+
+Every link to the Store listing carries a campaign ID (`cid`). Partner Center → Scan 2 PDF Bridge →
+**Analytics → Acquisitions** shows page views and installs per campaign. Data appears with a delay of a few hours,
+and installs are counted most reliably when people open the Store app (the badge opens it directly).
+
+| Campaign ID | Where |
+|---|---|
+| `site-hero` | Home page, badge at the top |
+| `site-get` | Home page, badge in "Get Scan 2 PDF" |
+| `site-home` | Home page, links in the setup steps and FAQ |
+| `site-help` | Help page links |
+| `addin-panel` | Outlook panel, "not reachable" help |
+| `github-readme` | GitHub README |
+| `llms` | llms.txt (AI search tools) |
+
+For new places (a LinkedIn post, an email, a partner site), use the Store link with a new ID, for example
+`https://apps.microsoft.com/detail/9NNN9ZTWZ9TZ?cid=linkedin-launch`.

@@ -191,6 +191,8 @@
     </script>
     <link rel="icon" type="image/png" href="/assets/icon-32.png" />
     <script type="module" src="/src/landing.ts"></script>
+    <!-- Official Microsoft Store badge (web component, loaded from Microsoft) -->
+    <script type="module" src="https://get.microsoft.com/badge/ms-store-badge.bundled.js"></script>
   </head>
   <body class="site">
     <a class="skip" href="#main">Skip to content</a>
@@ -222,7 +224,10 @@
             </p>
             <div class="actions">
               <a href="#get" class="btn">Get the add-in</a>
-              <a href="https://apps.microsoft.com/detail/9NNN9ZTWZ9TZ" class="btn btn-ghost" target="_blank" rel="noopener">Get the bridge from the Microsoft Store</a>
+              <span class="store-badge">
+                <ms-store-badge cid="site-hero" productid="9nnn9ztwz9tz" productname="Scan 2 PDF Bridge" window-mode="direct" theme="auto" size="large" language="en-us" animation="on"></ms-store-badge>
+                <a href="https://apps.microsoft.com/detail/9NNN9ZTWZ9TZ?cid=site-hero" class="btn btn-ghost store-fallback" target="_blank" rel="noopener">Get the bridge from the Microsoft Store</a>
+              </span>
             </div>
             <p class="fineprint">
               Free and open source. Works in new Outlook, classic Outlook and Outlook on the web. Scanning needs Windows 10 or 11.
@@ -272,7 +277,7 @@
           <ol class="steps">
             <li>
               <h3>Install the bridge</h3>
-              <p>A small Windows app that lets Outlook reach your scanner. Get it free from the <a class="inline" href="https://apps.microsoft.com/detail/9NNN9ZTWZ9TZ" target="_blank" rel="noopener">Microsoft Store</a>. It starts by itself every time you sign in.</p>
+              <p>A small Windows app that lets Outlook reach your scanner. Get it free from the <a class="inline" href="https://apps.microsoft.com/detail/9NNN9ZTWZ9TZ?cid=site-home" target="_blank" rel="noopener">Microsoft Store</a>. It starts by itself every time you sign in.</p>
             </li>
             <li>
               <h3>Add Scan 2 PDF to Outlook</h3>
@@ -390,7 +395,10 @@
                 <li>Look for its icon in your system tray. From now on it starts when you sign in, and the Store keeps it up to date.</li>
               </ol>
               <div class="get-actions">
-                <a href="https://apps.microsoft.com/detail/9NNN9ZTWZ9TZ" class="btn" target="_blank" rel="noopener">Get it from the Microsoft Store</a>
+                <span class="store-badge">
+                  <ms-store-badge cid="site-get" productid="9nnn9ztwz9tz" productname="Scan 2 PDF Bridge" window-mode="direct" theme="auto" size="large" language="en-us" animation="on"></ms-store-badge>
+                  <a href="https://apps.microsoft.com/detail/9NNN9ZTWZ9TZ?cid=site-get" class="btn store-fallback" target="_blank" rel="noopener">Get it from the Microsoft Store</a>
+                </span>
                 <a href="https://github.com/aghapytechservices/scan-2-pdf/releases/latest/download/Scan2PdfBridge-win-x64.zip" class="text-link">Standalone download</a>
               </div>
             </article>
@@ -429,7 +437,7 @@
             </details>
             <details>
               <summary>Why does Windows say "Windows protected your PC"?</summary>
-              <p>That message can appear for the standalone download. Install the bridge from the <a href="https://apps.microsoft.com/detail/9NNN9ZTWZ9TZ" target="_blank" rel="noopener">Microsoft Store</a> instead and you won't see it. If you use the standalone download, choose <b>More info</b>, then <b>Run anyway</b>.</p>
+              <p>That message can appear for the standalone download. Install the bridge from the <a href="https://apps.microsoft.com/detail/9NNN9ZTWZ9TZ?cid=site-home" target="_blank" rel="noopener">Microsoft Store</a> instead and you won't see it. If you use the standalone download, choose <b>More info</b>, then <b>Run anyway</b>.</p>
             </details>
             <details>
               <summary>Does it work on a Mac?</summary>
