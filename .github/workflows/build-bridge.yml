@@ -99,7 +99,7 @@ jobs:
           Copy-Item bridge/install.cmd, bridge/uninstall.cmd, bridge/install.ps1, bridge/uninstall.ps1, LICENSE out/Scan2PdfBridge/
           Compress-Archive -Path out/Scan2PdfBridge -DestinationPath Scan2PdfBridge-win-x64.zip -Force
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: Scan2PdfBridge-win-x64
           path: Scan2PdfBridge-win-x64.zip
@@ -188,7 +188,7 @@ jobs:
           Copy-Item out/Scan2PdfBridge-Store.msix "Scan2PdfBridge-$env:MSIX_VERSION-Store.msix"
           Get-ChildItem *.zip, *.msix | ForEach-Object { "$($_.Name)  $([math]::Round($_.Length/1MB,1)) MB" } >> $env:GITHUB_STEP_SUMMARY
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: Scan2PdfBridge-msix
           path: |
