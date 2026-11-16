@@ -17,8 +17,9 @@ public record ScanRequest(
     int JpegQuality = 75);
 
 /// <param name="Pages">base64 JPEG per page</param>
-/// <param name="Warning">Set when the scanner stopped part-way; the pages scanned so far are still returned.</param>
-public record ScanResult(IReadOnlyList<string> Pages, string? Warning = null);
+/// <param name="Warning">Set when the scanner stopped with an error part-way; the pages scanned so far are still returned.</param>
+/// <param name="Note">Informational, e.g. when the scanner can't confirm the feeder is empty.</param>
+public record ScanResult(IReadOnlyList<string> Pages, string? Warning = null, string? Note = null);
 
 public class ScanException(string message, int statusCode = 500) : Exception(message)
 {
@@ -103,53 +104,40 @@ public static class WiaScanner
             step = "applying scan settings";
             int dpi = ConfigureItem(item, req);
             bool jpegUnsupported = false;
-            bool reconnectEachPage = false;
             string? warning = null;
+            string? note = null;
+            bool canDetectPaper = feeder && CanDetectFeederPaper(device);
+            if (feeder) AppLog.Write(canDetectPaper ? "Feeder can detect paper." : "Feeder can't detect paper; relying on transfer results.");
 
             while (pages.Count < maxPages)
             {
+                object? image;
                 if (feeder && pages.Count > 0)
                 {
-                    // Ask the feeder whether paper is left, so an empty feeder ends the batch cleanly.
-                    bool? ready = FeederReady(device);
-                    AppLog.Write($"Feeder before page {pages.Count + 1}: {(ready is null ? "status unknown" : ready.Value ? "paper ready" : "empty")}");
-                    if (ready == false) break;
-                    if (reconnectEachPage) (device, item) = Reconnect(device, req, feeder);
-                }
-
-                step = pages.Count == 0 ? "scanning" : $"scanning page {pages.Count + 1}";
-                object? image;
-                try
-                {
-                    image = TransferPage(item, ref jpegUnsupported);
-                }
-                catch (Exception ex) when (feeder && pages.Count > 0 && ex.HResult == E_INVALIDARG && !reconnectEachPage)
-                {
-                    // Some drivers end the feeder session after every sheet: reconnect and ask again.
-                    AppLog.Write("Driver refused the next page on the same connection; reconnecting to the scanner.");
+                    step = $"scanning page {pages.Count + 1}";
+                    if (canDetectPaper && FeederReady(device) == false)
+                    {
+                        AppLog.Write("Feeder reports no more paper.");
+                        break;
+                    }
                     try
                     {
-                        (device, item) = Reconnect(device, req, feeder);
-                        image = TransferPage(item, ref jpegUnsupported);
-                        if (image is not null)
-                        {
-                            reconnectEachPage = true;
-                            AppLog.Write("Reconnecting worked; using it for the rest of this batch.");
-                        }
+                        image = NextFeederPage(ref device, ref item, req, ref jpegUnsupported, out bool confirmedEmpty);
+                        if (image is null && !confirmedEmpty)
+                            note = $"Scanned {pages.Count} page{(pages.Count == 1 ? "" : "s")}. If any are still in the feeder, click Scan again to add them.";
                     }
-                    catch (Exception retry)
+                    catch (Exception ex)
                     {
-                        AppLog.Write($"Reconnect attempt failed (HRESULT 0x{retry.HResult:X8})", retry);
-                        warning = StoppedWarning(retry, pages.Count);
+                        // Keep what we have: a later page failing (jam, cover open...) shouldn't throw away the earlier ones.
+                        AppLog.Write($"Scanner stopped after {pages.Count} page(s) (HRESULT 0x{ex.HResult:X8})", ex);
+                        warning = StoppedWarning(ex, pages.Count);
                         break;
                     }
                 }
-                catch (Exception ex) when (pages.Count > 0)
+                else
                 {
-                    // Keep what we have: a later page failing shouldn't throw away the earlier ones.
-                    AppLog.Write($"Scanner stopped after {pages.Count} page(s) (HRESULT 0x{ex.HResult:X8})", ex);
-                    warning = StoppedWarning(ex, pages.Count);
-                    break;
+                    step = "scanning";
+                    image = TransferPage(item, ref jpegUnsupported);
                 }
 
                 if (image is null) // feeder empty
@@ -166,8 +154,8 @@ public static class WiaScanner
                 if (!feeder) break; // one page per flatbed pass
             }
 
-            AppLog.Write($"Scan complete: {pages.Count} page(s){(warning is null ? "" : " (stopped early)")}");
-            return new ScanResult(pages, warning);
+            AppLog.Write($"Scan complete: {pages.Count} page(s){(warning is null ? "" : " (stopped early)")}{(note is null ? "" : " (end not confirmed)")}");
+            return new ScanResult(pages, warning, note);
         }
         catch (ScanException)
         {
@@ -186,6 +174,63 @@ public static class WiaScanner
         {
             try { Marshal.FinalReleaseComObject(device); } catch { /* already released */ }
         }
+    }
+
+    private const int DETECT_FEED = 0x020;
+    private static readonly int[] NextPageDelaysMs = [1500, 2000, 3500, 5000];
+
+    private static bool CanDetectFeederPaper(object deviceObj)
+    {
+        dynamic device = deviceObj;
+        int? caps = ReadIntProp(device.Properties, WIA_DPS_DOCUMENT_HANDLING_CAPABILITIES);
+        return caps is int c && (c & DETECT_FEED) != 0;
+    }
+
+    /// <summary>
+    /// Gets the next sheet from the feeder. Many scanners are busy for a moment after each sheet and
+    /// refuse (E_INVALIDARG) or report "empty" if asked immediately, so wait and retry, reconnecting once.
+    /// Returns null at the end of the stack; <paramref name="confirmedEmpty"/> says whether the scanner
+    /// clearly reported an empty feeder (twice) or we simply ran out of retries.
+    /// </summary>
+    private static object? NextFeederPage(ref object device, ref object item, ScanRequest req,
+        ref bool jpegUnsupported, out bool confirmedEmpty)
+    {
+        int emptyReports = 0;
+        for (int attempt = 0; attempt < NextPageDelaysMs.Length; attempt++)
+        {
+            Thread.Sleep(NextPageDelaysMs[attempt]);
+            if (attempt == 2)
+            {
+                AppLog.Write("Reconnecting to the scanner for the next page.");
+                (device, item) = Reconnect(device, req, feeder: true);
+            }
+
+            try
+            {
+                var image = TransferPage(item, ref jpegUnsupported);
+                if (image is not null)
+                {
+                    if (attempt > 0) AppLog.Write($"Next page arrived on attempt {attempt + 1}.");
+                    confirmedEmpty = false;
+                    return image;
+                }
+                emptyReports++;
+                AppLog.Write($"Feeder reported empty (attempt {attempt + 1}).");
+                if (emptyReports >= 2)
+                {
+                    confirmedEmpty = true;
+                    return null;
+                }
+            }
+            catch (Exception ex) when (ex.HResult == E_INVALIDARG || ex.HResult == WIA_ERROR_BUSY)
+            {
+                AppLog.Write($"Scanner not ready for the next page (attempt {attempt + 1}, 0x{ex.HResult:X8}).");
+            }
+        }
+
+        AppLog.Write("No more pages after retries; the scanner didn't confirm the feeder is empty.");
+        confirmedEmpty = false;
+        return null;
     }
 
     private static string StoppedWarning(Exception ex, int count)

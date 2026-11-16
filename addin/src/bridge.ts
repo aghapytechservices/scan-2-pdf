@@ -83,8 +83,8 @@ export class ScanBridge {
 
   /** Returns one base64 JPEG per scanned page. No timeout: a full feeder can take a while. */
   /** Pages are base64 JPEGs. `warning` is set when the scanner stopped part-way (pages so far are still returned). */
-  async scan(req: ScanRequest): Promise<{ pages: string[]; warning?: string | null }> {
-    return this.request<{ pages: string[]; warning?: string | null }>("/scan", {
+  async scan(req: ScanRequest): Promise<{ pages: string[]; warning?: string | null; note?: string | null }> {
+    return this.request<{ pages: string[]; warning?: string | null; note?: string | null }>("/scan", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(req),

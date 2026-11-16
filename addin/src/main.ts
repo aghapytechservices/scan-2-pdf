@@ -378,7 +378,7 @@ async function scan() {
   showMessage("info", source === "flatbed" ? "Scanning…" : "Scanning from the feeder…");
 
   try {
-    const { pages: scanned, warning } = await bridge.scan({
+    const { pages: scanned, warning, note } = await bridge.scan({
       deviceId: el.scanner.value || null,
       source,
       dpi,
@@ -390,6 +390,7 @@ async function scan() {
     renderPages();
     const added = `Added ${scanned.length} page${scanned.length === 1 ? "" : "s"}.`;
     if (warning) showMessage("error", `${added} ${warning}`);
+    else if (note) showMessage("info", note);
     else
       showMessage(
         "success",
