@@ -1,6 +1,7 @@
 import "./styles.css";
 import { BridgeError, BridgeUnreachableError, ScanBridge, type ColorMode, type PageSize, type ScanSource } from "./bridge";
 import { buildPdfBase64, pageToJpegBase64, type PageImage } from "./pdf";
+import { initFeedback, recordSuccessfulAttach } from "./feedback";
 
 const DEFAULT_BRIDGE_URL = "http://127.0.0.1:52801";
 const SETTINGS_KEY = "scan2pdf-settings";
@@ -425,6 +426,7 @@ async function attach() {
     pages = [];
     el.fileName.value = defaultFileName();
     renderPages();
+    recordSuccessfulAttach();
   } catch (err) {
     const msg = (err as Office.Error)?.message ?? String(err);
     showMessage("error", `Couldn't attach the ${format === "pdf" ? "PDF" : "images"}: ${msg}`);
@@ -531,6 +533,7 @@ Office.onReady((info) => {
     void connect();
   });
 
+  initFeedback();
   renderPages();
   void connect();
 });

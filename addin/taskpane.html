@@ -118,6 +118,46 @@
 
       <div id="message" class="hidden rounded-md px-2.5 py-2 text-xs"></div>
 
+      <!-- Feedback / review / share (shown after a few successful attaches, or from the footer) -->
+      <section id="feedback" class="hidden rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs" aria-live="polite">
+        <div id="fb-ask" class="space-y-2.5">
+          <p class="text-sm font-semibold text-slate-800">How is Scan 2 PDF working for you?</p>
+          <div class="grid grid-cols-2 gap-2">
+            <button id="fb-good" type="button" class="rounded-md border border-slate-300 bg-white px-2 py-2 font-semibold hover:border-emerald-600 hover:text-emerald-800">Working well</button>
+            <button id="fb-bad" type="button" class="rounded-md border border-slate-300 bg-white px-2 py-2 font-semibold hover:border-red-600 hover:text-red-800">Could be better</button>
+          </div>
+          <div class="flex justify-between text-slate-500">
+            <button id="fb-later" type="button" class="hover:text-slate-800 hover:underline">Not now</button>
+            <button id="fb-never" type="button" class="hover:text-slate-800 hover:underline">Don't ask again</button>
+          </div>
+        </div>
+
+        <div id="fb-up" class="hidden space-y-2.5">
+          <p id="fb-up-text" class="text-sm text-slate-800"></p>
+          <button id="fb-review" type="button" class="w-full rounded-md bg-blue-700 px-3 py-2 font-semibold text-white hover:bg-blue-800">Write a review</button>
+          <button id="fb-recommend" type="button" class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 font-semibold hover:border-blue-700">Recommend to a colleague</button>
+          <button id="fb-up-close" type="button" class="w-full text-center text-slate-500 hover:text-slate-800 hover:underline">No thanks</button>
+        </div>
+
+        <div id="fb-down" class="hidden space-y-2.5">
+          <p class="text-sm text-slate-800">Thanks for telling us. What went wrong? We read every message.</p>
+          <button id="fb-send" type="button" class="w-full rounded-md bg-blue-700 px-3 py-2 font-semibold text-white hover:bg-blue-800">Send feedback</button>
+          <a href="/support.html" target="_blank" rel="noopener" class="block text-center font-semibold text-blue-700 hover:underline">Open the help page</a>
+          <button id="fb-down-close" type="button" class="w-full text-center text-slate-500 hover:text-slate-800 hover:underline">Close</button>
+        </div>
+
+        <div id="fb-share" class="hidden space-y-2.5">
+          <p class="text-sm font-semibold text-slate-800">Recommend Scan 2 PDF</p>
+          <p class="text-slate-600">Send a colleague the link. It's free for them too.</p>
+          <button id="fb-email" type="button" class="w-full rounded-md bg-blue-700 px-3 py-2 font-semibold text-white hover:bg-blue-800">Email a colleague</button>
+          <div class="grid grid-cols-2 gap-2">
+            <button id="fb-copy" type="button" class="rounded-md border border-slate-300 bg-white px-2 py-2 font-semibold hover:border-blue-700">Copy link</button>
+            <button id="fb-system-share" type="button" class="rounded-md border border-slate-300 bg-white px-2 py-2 font-semibold hover:border-blue-700">More options</button>
+          </div>
+          <button id="fb-share-close" type="button" class="w-full text-center text-slate-500 hover:text-slate-800 hover:underline">Close</button>
+        </div>
+      </section>
+
       <details class="text-xs text-slate-500">
         <summary class="cursor-pointer">Advanced</summary>
         <label class="mt-2 block">
@@ -133,6 +173,8 @@
         © <span id="year">2026</span>
         <a href="https://aghapyts.com" target="_blank" rel="noopener" class="text-blue-700 hover:underline">Aghapy Tech Services</a>
         · <a href="/support.html" target="_blank" rel="noopener" class="hover:underline">Help</a>
+        · <button id="footer-share" type="button" class="hover:underline">Share</button>
+        · <button id="footer-feedback" type="button" class="hover:underline">Feedback</button>
         · <a href="/privacy.html" target="_blank" rel="noopener" class="hover:underline">Privacy</a>
       </footer>
     </main>
