@@ -2,10 +2,9 @@
 
 *By [Aghapy Tech Services](https://aghapyts.com)* · **https://scan2pdf.aghapyts.com**
 
-**Download the bridge:** grab `Scan2PdfBridge-win-x64.zip` from the latest
-[Actions build](../../actions/workflows/build-bridge.yml) or from
-[Releases](../../releases), unzip it, and double-click `Scan2PdfBridge.exe`. It offers to install itself and starts
-automatically at every sign-in.
+**Get the bridge:** [Scan 2 PDF Bridge in the Microsoft Store](https://apps.microsoft.com/detail/9NNN9ZTWZ9TZ)
+(free, signed by Microsoft, auto-updates). A standalone `Scan2PdfBridge-win-x64.zip` is also on
+[Releases](../../releases): unzip and double-click `Scan2PdfBridge.exe`.
 
 Adds a **Scan to PDF** button to the ribbon of any new email, reply, or forward. The user scans
 one or more pages (flatbed or document feeder, including duplex), reviews them (reorder, rotate,

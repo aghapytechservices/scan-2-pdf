@@ -196,6 +196,7 @@
 .get img { border-radius: 11px; }
 .get h3 { font-size: 1.45rem; margin-top: 0.25rem; }
 .get .status { color: #92400e; background: #fef3c7; border-radius: 6px; padding: 0.2rem 0.55rem; font-size: 0.92rem; }
+.get .status.status-ok { color: #065f46; background: #d1fae5; }
 .get p { color: #2a3956; }
 .site .mini-steps { list-style: decimal; margin: 0 0 0.5rem; padding-left: 1.25rem; color: #2a3956; display: grid; gap: 0.3rem; }
 .site .mini-steps a { color: var(--blue); font-weight: 700; }

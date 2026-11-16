@@ -87,7 +87,7 @@
           "name": "The bridge doesn't start after I restart the PC",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Right-click the tray icon and make sure Start with Windows is checked. Using version 1.1 or older? Download the latest version and double-click it. It replaces the old one and fixes start-up. In Settings, Apps, Startup, check that Scan 2 PDF Bridge isn't turned off."
+            "text": "Right-click the tray icon and make sure Start with Windows is checked. Using version 1.1 or older? Download the latest version and double-click it. It replaces the old one and fixes start-up. In Settings, Apps, Startup, check that Scan 2 PDF Bridge isn't turned off. Still using the standalone download? Switching to the Microsoft Store version gives you automatic updates. Exit the standalone one from its tray icon first."
           }
         },
         {
@@ -119,7 +119,7 @@
           "name": "Windows says \"Windows protected your PC\"",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Windows shows this for newly published apps. Choose More info, then Run anyway. You'll only see it the first time. The Microsoft Store version, once approved, won't show it."
+            "text": "That message can appear for the standalone download. The Microsoft Store version installs without it. For the standalone download, choose More info, then Run anyway. You'll only see it the first time."
           }
         },
         {
@@ -164,10 +164,10 @@
         },
         {
           "@type": "Question",
-          "name": "Install silently or remove the bridge",
+          "name": "Install silently or remove the bridge (standalone version)",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Run Scan2PdfBridge.exe --install --quiet to install for the signed-in user without prompts, or --uninstall to remove it. The download also includes install.ps1 and uninstall.ps1."
+            "text": "For the standalone download, run Scan2PdfBridge.exe --install --quiet to install for the signed-in user without prompts, or --uninstall to remove it. The download also includes install.ps1 and uninstall.ps1."
           }
         }
       ]
@@ -218,8 +218,9 @@
             <li>
               <h3>Install the bridge</h3>
               <p>
-                <a class="inline" href="https://github.com/aghapytechservices/scan-2-pdf/releases/latest/download/Scan2PdfBridge-win-x64.zip">Download it</a>,
-                unzip, and double-click <b>Scan2PdfBridge.exe</b>. Choose <b>Yes</b> to install. It starts by itself every time you sign in.
+                Get it free from the <a class="inline" href="https://apps.microsoft.com/detail/9NNN9ZTWZ9TZ" target="_blank" rel="noopener">Microsoft Store</a> and open it once
+                from the Start menu. It starts by itself every time you sign in, and the Store keeps it updated.
+                No Store on your PC? Use the <a class="inline" href="https://github.com/aghapytechservices/scan-2-pdf/releases/latest/download/Scan2PdfBridge-win-x64.zip">standalone download</a>.
               </p>
             </li>
             <li>
@@ -236,8 +237,7 @@
             </li>
           </ol>
           <p class="note">
-            Both parts are in Microsoft's review. Once approved, you'll be able to get the add-in from Outlook's add-ins store and the
-            bridge from the Microsoft Store, which installs without a Windows warning and updates itself.
+            The Outlook add-in is in Microsoft's review. Once approved, you'll also find it in Outlook's add-ins store.
           </p>
         </div>
       </section>
@@ -264,6 +264,7 @@
                 <li>Right-click the tray icon and make sure <b>Start with Windows</b> is checked.</li>
                 <li>Using version 1.1 or older? Download the latest version and double-click it. It replaces the old one and fixes start-up.</li>
                 <li>In <b>Settings</b>, <b>Apps</b>, <b>Startup</b>, check that Scan 2 PDF Bridge isn't turned off.</li>
+                <li>Still using the standalone download? Switching to the <a class="inline" href="https://apps.microsoft.com/detail/9NNN9ZTWZ9TZ" target="_blank" rel="noopener">Microsoft Store version</a> gives you automatic updates. Exit the standalone one from its tray icon first.</li>
               </ul>
             </details>
             <details>
@@ -284,7 +285,7 @@
             </details>
             <details>
               <summary>Windows says "Windows protected your PC"</summary>
-              <p>Windows shows this for newly published apps. Choose <b>More info</b>, then <b>Run anyway</b>. You'll only see it the first time. The Microsoft Store version, once approved, won't show it.</p>
+              <p>That message can appear for the standalone download. The <a class="inline" href="https://apps.microsoft.com/detail/9NNN9ZTWZ9TZ" target="_blank" rel="noopener">Microsoft Store version</a> installs without it. For the standalone download, choose <b>More info</b>, then <b>Run anyway</b>. You'll only see it the first time.</p>
             </details>
             <details>
               <summary>The attachment is too large</summary>
@@ -323,8 +324,8 @@
 }</code></pre>
             </details>
             <details>
-              <summary>Install silently or remove the bridge</summary>
-              <p>Run <b>Scan2PdfBridge.exe --install --quiet</b> to install for the signed-in user without prompts, or <b>--uninstall</b> to remove it. The download also includes <b>install.ps1</b> and <b>uninstall.ps1</b>.</p>
+              <summary>Install silently or remove the bridge (standalone version)</summary>
+              <p>For the standalone download, run <b>Scan2PdfBridge.exe --install --quiet</b> to install for the signed-in user without prompts, or <b>--uninstall</b> to remove it. The download also includes <b>install.ps1</b> and <b>uninstall.ps1</b>.</p>
             </details>
           </div>
         </div>
