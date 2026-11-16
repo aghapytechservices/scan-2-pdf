@@ -1,7 +1,7 @@
 import "./styles.css";
 import { BridgeError, BridgeUnreachableError, ScanBridge, type ColorMode, type PageSize, type ScanSource } from "./bridge";
 import { buildPdfBase64, pageToJpegBase64, type PageImage } from "./pdf";
-import { initFeedback, recordSuccessfulAttach } from "./feedback";
+import { initFeedback, recordSuccessfulAttach, setBridgeEdition } from "./feedback";
 
 const DEFAULT_BRIDGE_URL = "http://127.0.0.1:52801";
 const SETTINGS_KEY = "scan2pdf-settings";
@@ -302,7 +302,8 @@ async function connect() {
   bridgeOnline = false;
   refreshButtons();
   try {
-    await bridge.health();
+    const health = await bridge.health();
+    setBridgeEdition(health.edition, () => bridge.requestStoreReview());
     const scanners = await bridge.listScanners();
     const group = document.createElement("optgroup");
     group.label = `${scanners.length} scanner${scanners.length === 1 ? "" : "s"} available`;

@@ -115,6 +115,19 @@ function sendFeedback() {
   }
 }
 
+// ---------- Microsoft Store rating (bridge, Store edition) ----------
+
+let requestStoreReview: (() => Promise<unknown>) | null = null;
+
+/** Called once the bridge answers: shows the Store rating button only for the Microsoft Store edition. */
+export function setBridgeEdition(edition: string | undefined, request: () => Promise<unknown>) {
+  requestStoreReview = edition === "store" ? request : null;
+  document.getElementById("fb-store-review")?.classList.toggle("hidden", !requestStoreReview);
+  const text = document.getElementById("fb-up-text");
+  if (text && !REVIEW_URL && requestStoreReview)
+    text.textContent = "Glad it's helping. A quick rating helps other people find Scan 2 PDF.";
+}
+
 // ---------- Public API ----------
 
 /** Call after every successful attach. Shows the rating prompt when it's due. */
@@ -154,6 +167,24 @@ export function initFeedback() {
   $("fb-review").addEventListener("click", () => {
     finish();
     open(REVIEW_URL);
+  });
+  $("fb-store-review").addEventListener("click", async (e) => {
+    const button = e.currentTarget as HTMLButtonElement;
+    finish();
+    if (!requestStoreReview) return;
+    const label = button.textContent;
+    button.disabled = true;
+    button.textContent = "Opening the Microsoft Store…";
+    try {
+      await requestStoreReview();
+      button.textContent = "Thanks for rating!";
+    } catch {
+      button.textContent = "Couldn't open the Store. Try the tray icon menu.";
+    }
+    setTimeout(() => {
+      button.textContent = label;
+      button.disabled = false;
+    }, 4000);
   });
   $("fb-recommend").addEventListener("click", () => {
     finish();

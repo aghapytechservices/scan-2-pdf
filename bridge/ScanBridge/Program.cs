@@ -178,7 +178,21 @@ app.MapGet("/", async () =>
     return Results.Content(html, "text/html", Encoding.UTF8);
 });
 
-app.MapGet("/health", () => Results.Ok(new { ok = true, version = TrayApp.Version }));
+app.MapGet("/health", () => Results.Ok(new
+{
+    ok = true,
+    version = TrayApp.Version,
+    edition = AppPaths.IsPackaged ? "store" : "standalone"
+}));
+
+// Store edition: show the Microsoft Store rating dialog on this PC (asked for from the add-in's feedback card).
+app.MapPost("/store-review", async () =>
+{
+    if (!StoreReview.IsAvailable)
+        return Results.Problem("Store reviews are only available in the Microsoft Store edition.", statusCode: 404);
+    var status = await TrayApp.RequestStoreReviewAsync();
+    return Results.Ok(new { status });
+});
 
 app.MapGet("/scanners", async () =>
 {

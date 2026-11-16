@@ -36,8 +36,44 @@ public static class TrayApp
         return done.Task;
     }
 
+    private static Form? _host;
+
+    /// <summary>
+    /// Shows the Microsoft Store rating dialog (Store edition). Safe to call from any thread:
+    /// it runs on the tray thread, which owns the window the dialog is parented to.
+    /// </summary>
+    public static Task<string> RequestStoreReviewAsync()
+    {
+        var host = _host;
+        if (host is null || !StoreReview.IsAvailable) return Task.FromResult("unavailable");
+        var tcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        host.BeginInvoke(new Action(async () =>
+        {
+            try
+            {
+                host.Activate();
+                tcs.TrySetResult(await StoreReview.RequestAsync(host.Handle));
+            }
+            catch (Exception ex) { tcs.TrySetException(ex); }
+        }));
+        return tcs.Task;
+    }
+
     private static void Run(string statusUrl, bool showStartupBalloon)
     {
+        // Invisible window: parent for the Store dialog, and a target to run UI work on this thread.
+        _host = new Form
+        {
+            ShowInTaskbar = false,
+            FormBorderStyle = FormBorderStyle.None,
+            StartPosition = FormStartPosition.Manual,
+            Location = new Point(-32000, -32000),
+            Size = new Size(1, 1),
+            Opacity = 0
+        };
+        _host.Show();
+        _host.Hide();
+
         using var icon = new NotifyIcon
         {
             Icon = LoadIcon(),
@@ -74,6 +110,15 @@ public static class TrayApp
             syncing = false;
         };
         menu.Items.Add(startWithWindows);
+        if (StoreReview.IsAvailable)
+        {
+            menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add("Rate in Microsoft Store", null, async (_, _) =>
+            {
+                try { await StoreReview.RequestAsync(_host!.Handle); }
+                catch (Exception ex) { AppLog.Write("Rate menu failed", ex); }
+            });
+        }
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Exit", null, (_, _) =>
         {
