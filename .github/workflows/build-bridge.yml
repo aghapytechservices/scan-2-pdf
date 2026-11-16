@@ -96,7 +96,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force out/Scan2PdfBridge | Out-Null
           Copy-Item publish/Scan2PdfBridge.exe, publish/appsettings.json out/Scan2PdfBridge/
-          Copy-Item bridge/install.ps1, bridge/uninstall.ps1, LICENSE out/Scan2PdfBridge/
+          Copy-Item bridge/install.cmd, bridge/uninstall.cmd, bridge/install.ps1, bridge/uninstall.ps1, LICENSE out/Scan2PdfBridge/
           Compress-Archive -Path out/Scan2PdfBridge -DestinationPath Scan2PdfBridge-win-x64.zip -Force
 
       - uses: actions/upload-artifact@v4

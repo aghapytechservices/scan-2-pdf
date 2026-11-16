@@ -16,7 +16,7 @@ public static class Installer
     private const string RunValueName = "Scan2PdfBridge";
     private const string LegacyTaskName = "Scan 2 PDF Bridge";
     private const string ExeName = "Scan2PdfBridge.exe";
-    private static readonly string[] CompanionFiles = ["LICENSE", "install.ps1", "uninstall.ps1"];
+    private static readonly string[] CompanionFiles = ["LICENSE", "install.cmd", "uninstall.cmd", "install.ps1", "uninstall.ps1"];
 
     public static string InstallDir { get; } =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Scan2PdfBridge");
