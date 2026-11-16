@@ -2,6 +2,7 @@ import "./styles.css";
 import { BridgeError, BridgeUnreachableError, ScanBridge, type ColorMode, type PageSize, type ScanSource } from "./bridge";
 import { buildPdfBase64, pageToJpegBase64, type PageImage } from "./pdf";
 import { initFeedback, recordSuccessfulAttach, setBridgeEdition } from "./feedback";
+import { PdfReadError, readPdf, type PdfPageSource } from "./pdfsource";
 
 const DEFAULT_BRIDGE_URL = "http://127.0.0.1:52801";
 const SETTINGS_KEY = "scan2pdf-settings";
@@ -21,6 +22,10 @@ const el = {
   pageSize: $<HTMLSelectElement>("pageSize"),
   scanBtn: $<HTMLButtonElement>("scanBtn"),
   fileInput: $<HTMLInputElement>("fileInput"),
+  fileLabel: $<HTMLLabelElement>("fileLabel"),
+  scanControls: $<HTMLDivElement>("scanControls"),
+  macHelp: $<HTMLDivElement>("macHelp"),
+  dropHint: $<HTMLDivElement>("dropHint"),
   pages: $<HTMLUListElement>("pages"),
   pageCount: $<HTMLSpanElement>("pageCount"),
   emptyHint: $<HTMLParagraphElement>("emptyHint"),
@@ -105,13 +110,45 @@ function saveSettings() {
 const settings = loadSettings();
 const bridge = new ScanBridge(settings.bridgeUrl);
 
+// ---------- Platform ----------
+/** Scanning needs the Windows bridge. Elsewhere (Mac, Linux, ChromeOS) we guide people to add files instead. */
+type Platform = "windows" | "mac" | "other";
+function detectPlatform(): Platform {
+  try {
+    const p = Office.context.platform;
+    if (p === Office.PlatformType.PC) return "windows";
+    if (p === Office.PlatformType.Mac) return "mac";
+  } catch {
+    /* fall through to the user agent */
+  }
+  const ua = navigator.userAgent;
+  if (/Windows/i.test(ua)) return "windows";
+  if (/Macintosh|Mac OS X/i.test(ua)) return "mac";
+  return "other";
+}
+let platform: Platform = "windows";
+
 // ---------- UI helpers ----------
-function setStatus(state: "connecting" | "online" | "offline" | "noscanner", text: string) {
-  const colors = { connecting: "bg-slate-300", online: "bg-emerald-500", offline: "bg-red-500", noscanner: "bg-amber-500" };
+type Status = "connecting" | "online" | "offline" | "noscanner" | "files";
+function setStatus(state: Status, text: string) {
+  const colors = {
+    connecting: "bg-slate-300",
+    online: "bg-emerald-500",
+    offline: "bg-red-500",
+    noscanner: "bg-amber-500",
+    files: "bg-blue-500",
+  };
   el.statusDot.className = `h-2.5 w-2.5 rounded-full ${colors[state]}`;
   el.statusText.textContent = text;
-  el.retryBtn.classList.toggle("hidden", state === "online" || state === "connecting");
+  el.retryBtn.classList.toggle("hidden", state === "online" || state === "connecting" || state === "files");
   el.bridgeHelp.classList.toggle("hidden", state !== "offline");
+  // Files-only mode (no bridge on this platform): hide scanner controls, show guidance, promote "Add files".
+  const filesOnly = state === "files";
+  el.macHelp.classList.toggle("hidden", !filesOnly);
+  el.scanControls.classList.toggle("hidden", filesOnly);
+  el.fileLabel.className = filesOnly
+    ? "block w-full cursor-pointer rounded-md bg-blue-700 px-3 py-2 text-center font-semibold text-white hover:bg-blue-800"
+    : "block cursor-pointer text-center text-xs text-blue-700 hover:underline";
 }
 
 function showMessage(kind: "info" | "success" | "error", text: string) {
@@ -171,9 +208,9 @@ function loadImageSize(dataUrl: string): Promise<{ width: number; height: number
 let idCounter = 0;
 const newId = () => `p${Date.now().toString(36)}${(idCounter++).toString(36)}`;
 
-async function addPage(dataUrl: string, dpi: number | null) {
-  const { width, height } = await loadImageSize(dataUrl);
-  pages.push({ id: newId(), dataUrl, rotation: 0, dpi, width, height });
+async function addPage(dataUrl: string, dpi: number | null, pdf?: PdfPageSource, size?: { width: number; height: number }) {
+  const { width, height } = size ?? (await loadImageSize(dataUrl));
+  pages.push({ id: newId(), dataUrl, rotation: 0, dpi, width, height, pdf });
 }
 
 function iconButton(label: string, title: string, onClick: () => void, danger = false) {
@@ -323,7 +360,9 @@ async function connect() {
     else setStatus("online", "Scanner ready");
   } catch (err) {
     el.scanner.replaceChildren();
-    if (err instanceof BridgeUnreachableError) setStatus("offline", "Scanner service not reachable");
+    if (err instanceof BridgeUnreachableError && platform !== "windows")
+      setStatus("files", platform === "mac" ? "Add scanned files on Mac" : "Add scanned files");
+    else if (err instanceof BridgeUnreachableError) setStatus("offline", "Scanner service not reachable");
     else setStatus("noscanner", err instanceof Error ? err.message : String(err));
   }
   refreshButtons();
@@ -447,16 +486,70 @@ function readAsDataUrl(file: File): Promise<string> {
   });
 }
 
-async function addFiles(files: FileList) {
+const isPdf = (f: File) => f.type === "application/pdf" || /\.pdf$/i.test(f.name);
+const isImage = (f: File) => /^image\/(jpeg|png)$/.test(f.type) || /\.(jpe?g|png)$/i.test(f.name);
+
+async function addFiles(files: FileList | File[]) {
+  const list = Array.from(files);
+  if (!list.length) return;
+  busy = true;
+  refreshButtons();
   let added = 0;
-  for (const f of Array.from(files)) {
-    if (!/^image\/(jpeg|png)$/.test(f.type)) continue;
-    await addPage(await readAsDataUrl(f), null);
-    added++;
+  let skipped = 0;
+  const problems: string[] = [];
+  try {
+    for (const f of list) {
+      if (isPdf(f)) {
+        showMessage("info", `Reading ${f.name}…`);
+        try {
+          const rendered = await readPdf(f);
+          for (const r of rendered) await addPage(r.dataUrl, null, r.source, { width: r.width, height: r.height });
+          added += rendered.length;
+        } catch (err) {
+          problems.push(err instanceof PdfReadError ? err.message : `${f.name} couldn't be read.`);
+        }
+      } else if (isImage(f)) {
+        await addPage(await readAsDataUrl(f), null);
+        added++;
+      } else {
+        skipped++;
+      }
+    }
+  } finally {
+    busy = false;
+    renderPages();
   }
-  renderPages();
-  if (added) showMessage("success", `Added ${added} image${added === 1 ? "" : "s"}.`);
-  else showMessage("error", "Only JPG and PNG images can be added.");
+
+  if (problems.length) showMessage("error", problems.join(" "));
+  else if (added)
+    showMessage("success", `Added ${added} page${added === 1 ? "" : "s"}.` + (skipped ? ` Skipped ${skipped} file${skipped === 1 ? "" : "s"} that weren't PDF, JPG or PNG.` : ""));
+  else showMessage("error", "Only PDF, JPG and PNG files can be added.");
+}
+
+// Drag and drop files anywhere on the panel
+function initDragAndDrop() {
+  let depth = 0;
+  const hasFiles = (e: DragEvent) => Array.from(e.dataTransfer?.types ?? []).includes("Files");
+  document.addEventListener("dragenter", (e) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    depth++;
+    el.dropHint.classList.replace("hidden", "grid");
+  });
+  document.addEventListener("dragover", (e) => {
+    if (hasFiles(e)) e.preventDefault();
+  });
+  document.addEventListener("dragleave", () => {
+    depth = Math.max(0, depth - 1);
+    if (depth === 0) el.dropHint.classList.replace("grid", "hidden");
+  });
+  document.addEventListener("drop", (e) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    depth = 0;
+    el.dropHint.classList.replace("grid", "hidden");
+    if (e.dataTransfer?.files.length) void addFiles(e.dataTransfer.files);
+  });
 }
 
 // ---------- Init ----------
@@ -534,7 +627,9 @@ Office.onReady((info) => {
     void connect();
   });
 
+  platform = detectPlatform();
   initFeedback();
+  initDragAndDrop();
   renderPages();
   void connect();
 });

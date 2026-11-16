@@ -1,4 +1,5 @@
 import { PDFDocument, degrees } from "pdf-lib";
+import type { PdfPageSource } from "./pdfsource";
 
 export interface PageImage {
   id: string;
@@ -10,6 +11,8 @@ export interface PageImage {
   dpi: number | null;
   width: number;
   height: number;
+  /** Set for pages that came from a PDF file: merged from the original, without re-rendering. */
+  pdf?: PdfPageSource;
 }
 
 const LETTER = { w: 612, h: 792 }; // points
@@ -30,7 +33,22 @@ export async function buildPdfBase64(pages: PageImage[], title: string): Promise
   doc.setCreator("Scan 2 PDF");
   doc.setProducer("Scan 2 PDF (pdf-lib)");
 
+  const sources = new Map<Uint8Array, PDFDocument>();
+
   for (const p of pages) {
+    if (p.pdf) {
+      let src = sources.get(p.pdf.bytes);
+      if (!src) {
+        src = await PDFDocument.load(p.pdf.bytes, { ignoreEncryption: true });
+        sources.set(p.pdf.bytes, src);
+      }
+      const [copied] = await doc.copyPages(src, [p.pdf.index]);
+      const original = copied.getRotation().angle;
+      doc.addPage(copied);
+      if (p.rotation) copied.setRotation(degrees((original + p.rotation) % 360));
+      continue;
+    }
+
     const { bytes, mime } = dataUrlToBytes(p.dataUrl);
     const img = mime === "image/png" ? await doc.embedPng(bytes) : await doc.embedJpg(bytes);
 
