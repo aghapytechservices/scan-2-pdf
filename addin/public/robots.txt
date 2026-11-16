@@ -1,0 +1,8 @@
+# Scan 2 PDF: https://scan2pdf.aghapyts.com
+User-agent: *
+Allow: /
+# Internal pages loaded inside Outlook by the add-in; not useful as search results.
+Disallow: /taskpane.html
+Disallow: /commands.html
+
+Sitemap: https://scan2pdf.aghapyts.com/sitemap.xml

@@ -40,8 +40,35 @@ function manifestPlugin(): Plugin {
   };
 }
 
+/** Public pages: preload the main (latin) font files so text renders sooner. Skips the add-in's own pages. */
+function preloadFontsPlugin(): Plugin {
+  return {
+    name: "preload-fonts",
+    apply: "build",
+    transformIndexHtml: {
+      order: "post",
+      handler(html, ctx) {
+        if (!ctx.bundle || /taskpane|commands/.test(ctx.filename)) return html;
+        const fonts = Object.keys(ctx.bundle).filter(
+          (f) =>
+            f.endsWith(".woff2") &&
+            /bricolage-grotesque-latin-standard-normal|atkinson-hyperlegible-latin-(400|700)-normal/.test(f),
+        );
+        return {
+          html,
+          tags: fonts.map((f) => ({
+            tag: "link",
+            attrs: { rel: "preload", as: "font", type: "font/woff2", href: `/${f}`, crossorigin: "" },
+            injectTo: "head-prepend" as const,
+          })),
+        };
+      },
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [tailwindcss(), manifestPlugin()],
+  plugins: [tailwindcss(), manifestPlugin(), preloadFontsPlugin()],
   server: { port: 3000, strictPort: true, https },
   preview: { port: 3000, strictPort: true, https },
   build: {
