@@ -341,6 +341,11 @@ async function connect() {
   try {
     const health = await bridge.health();
     setBridgeEdition(health.edition, () => bridge.requestStoreReview());
+    const updateNote = document.getElementById("updateNote");
+    if (updateNote) {
+      updateNote.classList.toggle("hidden", !health.updateAvailable);
+      if (health.updateAvailable) document.getElementById("updateVersion")!.textContent = "v" + health.updateAvailable;
+    }
     const scanners = await bridge.listScanners();
     const group = document.createElement("optgroup");
     group.label = `${scanners.length} scanner${scanners.length === 1 ? "" : "s"} available`;

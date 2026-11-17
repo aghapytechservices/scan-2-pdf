@@ -9,6 +9,8 @@ public static class ScanProgress
     private static DateTime _started;
     private static DateTime _lastPage;
 
+    public static bool IsActive { get { lock (Gate) return _active; } }
+
     public static void Start()
     {
         lock (Gate) { _active = true; _pages = 0; _started = _lastPage = DateTime.UtcNow; }
