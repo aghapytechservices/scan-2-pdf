@@ -9,8 +9,15 @@ const string DefaultUrl = "http://127.0.0.1:52801";
 //   --background  started at sign-in: no notification, and exit quietly if already running
 //   --install     install/update for this user and start at sign-in (add --quiet to skip prompts)
 //   --uninstall   remove start-at-sign-in and the installed files
+//   --wait-pid N  (used by the updater) wait for the old copy, process N, to exit first
 string[] ownSwitches = ["--background", "--install", "--uninstall", "--quiet"];
 bool Has(string sw) => args.Contains(sw, StringComparer.OrdinalIgnoreCase);
+var waitPidAt = Array.FindIndex(args, a => a.Equals("--wait-pid", StringComparison.OrdinalIgnoreCase));
+if (waitPidAt >= 0)
+{
+    if (waitPidAt + 1 < args.Length && int.TryParse(args[waitPidAt + 1], out var oldPid)) Updater.WaitForExit(oldPid);
+    args = args.Where((_, i) => i != waitPidAt && i != waitPidAt + 1).ToArray();
+}
 var background = Has("--background") || StartupManager.LaunchedAtStartup();
 var installRequested = Has("--install");
 var uninstallRequested = Has("--uninstall");
@@ -157,6 +164,10 @@ app.MapGet("/", async () =>
         ? "<p class='warn'>None configured: the add-in can't connect. Add its web address to <code>ScanBridge:ExtraAllowedOrigins</code> in your overrides file (below) and restart.</p>"
         : "<ul>" + string.Concat(allowedOrigins.Select(o => $"<li><code>{WebUtility.HtmlEncode(o)}</code></li>")) + "</ul>";
 
+    var updateHtml = Updater.Available is { } upd
+        ? $"<p class='warn'>Update available: v{upd.Display}. Right-click the tray icon and choose <b>Install update</b>, or <a href='{WebUtility.HtmlEncode(upd.PageUrl)}'>download it</a>.</p>"
+        : "";
+
     var html = $$"""
         <!doctype html><html><head><meta charset="utf-8"><title>Scan 2 PDF Bridge</title>
         <style>
@@ -167,6 +178,7 @@ app.MapGet("/", async () =>
         </style></head><body>
         <h1>Scan 2 PDF Bridge <span class="muted">v{{TrayApp.Version}}</span></h1>
         <p class="ok">● Running on {{WebUtility.HtmlEncode(listenUrl)}}</p>
+        {{updateHtml}}
         <h2>Scanners</h2>{{scannersHtml}}
         <h2>Allowed add-in origins</h2>{{origins}}
         <h2>Files</h2>
@@ -184,7 +196,8 @@ app.MapGet("/health", () => Results.Ok(new
 {
     ok = true,
     version = TrayApp.Version,
-    edition = AppPaths.IsPackaged ? "store" : "standalone"
+    edition = AppPaths.IsPackaged ? "store" : "standalone",
+    updateAvailable = Updater.Available?.Display  // standalone only: newer release found by the update check
 }));
 
 // Store edition: show the Microsoft Store rating dialog on this PC (asked for from the add-in's feedback card).

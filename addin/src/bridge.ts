@@ -69,7 +69,7 @@ export class ScanBridge {
   }
 
   health() {
-    return this.request<{ ok: boolean; version: string; edition?: "store" | "standalone" }>("/health", {}, 3000);
+    return this.request<{ ok: boolean; version: string; edition?: "store" | "standalone"; updateAvailable?: string | null }>("/health", {}, 3000);
   }
 
   /** Pages received so far in the scan that's running (null if the bridge is older and doesn't report it). */

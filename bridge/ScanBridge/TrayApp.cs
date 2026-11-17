@@ -110,6 +110,37 @@ public static class TrayApp
             syncing = false;
         };
         menu.Items.Add(startWithWindows);
+
+        // ---- Updates ----
+        menu.Items.Add(new ToolStripSeparator());
+        var installUpdate = new ToolStripMenuItem("Install update") { Visible = false, Font = new Font(menu.Font, FontStyle.Bold) };
+        installUpdate.Click += (_, _) => { if (Updater.Available is { } r) InstallUpdate(icon, r); };
+        menu.Items.Add(installUpdate);
+        menu.Items.Add("Check for updates", null, async (_, _) =>
+        {
+            if (!Updater.IsAvailable) { OpenUrl(Updater.StorePage); return; } // Store edition: the Store updates it
+            await CheckForUpdates(icon, manual: true);
+        });
+        if (Updater.IsAvailable)
+        {
+            var autoCheck = new ToolStripMenuItem("Check for updates automatically")
+            {
+                CheckOnClick = true,
+                Checked = UpdateState.Load().AutoCheck
+            };
+            autoCheck.CheckedChanged += (_, _) =>
+            {
+                var st = UpdateState.Load();
+                st.AutoCheck = autoCheck.Checked;
+                st.Save();
+            };
+            menu.Items.Add(autoCheck);
+        }
+        menu.Opening += (_, _) =>
+        {
+            installUpdate.Visible = Updater.Available is not null;
+            if (Updater.Available is { } r) installUpdate.Text = $"Install update v{r.Display}";
+        };
         if (StoreReview.IsAvailable)
         {
             menu.Items.Add(new ToolStripSeparator());
@@ -129,17 +160,168 @@ public static class TrayApp
         });
 
         icon.DoubleClick += (_, _) => OpenUrl(statusUrl);
-        icon.BalloonTipClicked += (_, _) => OpenUrl(statusUrl);
-
-        if (showStartupBalloon)
+        icon.BalloonTipClicked += (_, _) =>
         {
-            icon.ShowBalloonTip(5000, "Scan 2 PDF Bridge is running",
-                "It runs in the background (see the tray icon). Click here to open the status page.",
-                ToolTipIcon.Info);
+            var action = _balloonAction ?? (() => OpenUrl(statusUrl));
+            _balloonAction = null;
+            action();
+        };
+
+        if (!AnnounceFinishedUpdate(icon) && showStartupBalloon)
+        {
+            Balloon(icon, "Scan 2 PDF Bridge is running",
+                "It runs in the background (see the tray icon). Click here to open the status page.", null);
+        }
+
+        // Standalone edition: look for a new release shortly after start, then about once a day.
+        // (An hourly tick that checks the last-check time copes with sleep and long uptimes.)
+        using var updateTimer = new System.Windows.Forms.Timer { Interval = (int)Updater.FirstCheckDelay.TotalMilliseconds };
+        if (Updater.IsAvailable)
+        {
+            updateTimer.Tick += async (_, _) =>
+            {
+                updateTimer.Interval = (int)TimeSpan.FromHours(1).TotalMilliseconds;
+                var st = UpdateState.Load();
+                if (!st.AutoCheck) return;
+                var due = !_checkedThisSession || st.LastCheckUtc is not { } last || DateTime.UtcNow - last >= Updater.CheckInterval;
+                if (!due) return;
+                _checkedThisSession = true;
+                await CheckForUpdates(icon, manual: false);
+            };
+            updateTimer.Start();
         }
 
         Application.Run(); // message loop until Exit
         icon.Visible = false;
+    }
+
+    // ---------------- updates ----------------
+
+    private static Action? _balloonAction;
+    private static bool _checkedThisSession;
+    private static string? _notifiedVersion;
+    private static bool _updating;
+
+    private static void Balloon(NotifyIcon icon, string title, string text, Action? onClick, ToolTipIcon kind = ToolTipIcon.Info)
+    {
+        _balloonAction = onClick;
+        icon.ShowBalloonTip(5000, title, text, kind);
+    }
+
+    private static async Task CheckForUpdates(NotifyIcon icon, bool manual)
+    {
+        Updater.ReleaseInfo? release;
+        try
+        {
+            release = await Updater.CheckAsync();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("Update check failed", ex);
+            if (manual)
+            {
+                var open = MessageBox.Show(
+                    "Couldn't check for updates. Check your internet connection and try again.\n\n" +
+                    $"{ex.Message}\n\nOpen the downloads page instead?",
+                    "Scan 2 PDF Bridge", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                if (open == DialogResult.Yes) OpenUrl(Updater.ReleasesPage);
+            }
+            return;
+        }
+
+        if (release is null)
+        {
+            if (manual) ShowInfo($"You have the latest version (v{Version}).");
+            return;
+        }
+
+        if (manual)
+        {
+            OfferUpdate(icon, release);
+            return;
+        }
+
+        // Automatic check: one quiet notification per version, unless the user skipped it.
+        if (UpdateState.Load().SkippedVersion == release.Display || _notifiedVersion == release.Display) return;
+        _notifiedVersion = release.Display;
+        Balloon(icon, $"Scan 2 PDF Bridge v{release.Display} is available",
+            $"You have v{Version}. Click here to install it (takes a few seconds).",
+            () => OfferUpdate(icon, release));
+    }
+
+    private static void OfferUpdate(NotifyIcon icon, Updater.ReleaseInfo release)
+    {
+        var answer = MessageBox.Show(
+            $"Scan 2 PDF Bridge v{release.Display} is available. You have v{Version}.\n\n" +
+            "Install it now? The bridge restarts in a few seconds; your settings are kept.\n\n" +
+            "Yes = install now    No = skip this version    Cancel = remind me later",
+            "Scan 2 PDF Bridge", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
+
+        if (answer == DialogResult.Yes) InstallUpdate(icon, release);
+        else if (answer == DialogResult.No)
+        {
+            var st = UpdateState.Load();
+            st.SkippedVersion = release.Display;
+            st.Save();
+        }
+    }
+
+    private static async void InstallUpdate(NotifyIcon icon, Updater.ReleaseInfo release)
+    {
+        if (_updating) return;
+        if (ScanProgress.IsActive)
+        {
+            ShowInfo("A scan is in progress. Install the update when it's finished.");
+            return;
+        }
+
+        _updating = true;
+        try
+        {
+            icon.Text = "Scan 2 PDF Bridge — updating…";
+            Balloon(icon, $"Updating to v{release.Display}…", "Downloading the update. The bridge restarts when it's ready.", null);
+
+            var st = UpdateState.Load();
+            st.PendingVersion = release.Display;
+            st.SkippedVersion = null;
+            st.Save();
+
+            await Updater.DownloadAndStartInstallAsync(release);
+            Application.ExitThread(); // the new copy waits for this process to exit, then installs and restarts
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("Update failed", ex);
+            var st = UpdateState.Load();
+            st.PendingVersion = null;
+            st.Save();
+            icon.Text = "Scan 2 PDF Bridge — running";
+            var open = MessageBox.Show(
+                $"Couldn't install the update.\n\n{ex.Message}\n\nOpen the downloads page to update by hand?",
+                "Scan 2 PDF Bridge", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            if (open == DialogResult.Yes) OpenUrl(release.PageUrl);
+        }
+        finally
+        {
+            _updating = false;
+        }
+    }
+
+    /// <summary>After an update, the new copy says so once. Returns true if it showed that notification.</summary>
+    private static bool AnnounceFinishedUpdate(NotifyIcon icon)
+    {
+        var st = UpdateState.Load();
+        if (st.PendingVersion is null) return false;
+        var updated = st.PendingVersion == Version;
+        if (!updated) AppLog.Write($"Update to {st.PendingVersion} didn't complete; still running {Version}");
+        st.PendingVersion = null;
+        st.Save();
+        if (!updated) return false;
+
+        AppLog.Write($"Updated to {Version}");
+        Balloon(icon, $"Scan 2 PDF Bridge updated to v{Version}",
+            "Click here to see what's new.", () => OpenUrl(Updater.ReleasesPage));
+        return true;
     }
 
     public static string Version =>
