@@ -103,7 +103,8 @@ export async function handle(req: Request, store: Store): Promise<Response> {
       const body = (await req.json().catch(() => null)) as { sid?: string; up?: string; pk?: string } | null;
       if (!body || !SID.test(body.sid ?? "") || !HASH.test(body.up ?? "") || !HASH.test(body.pk ?? ""))
         return fail(400, "Bad request.");
-      if (await store.hgetall(k.session(body.sid!))) return fail(409, "Session exists.");
+      const existing = await store.hgetall(k.session(body.sid!));
+      if (existing && existing.up) return fail(409, "Session exists.");
       await store.hset(k.session(body.sid!), { up: body.up!, pk: body.pk!, n: 0, done: 0, at: Date.now() });
       await store.expire(k.session(body.sid!), SESSION_TTL);
       return json({ ok: true, expiresIn: SESSION_TTL });

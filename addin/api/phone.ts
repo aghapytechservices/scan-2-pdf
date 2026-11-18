@@ -14,7 +14,18 @@ function store(): Store {
   const r = redis;
   return {
     hset: (key, fields) => r.hset(key, fields),
-    hgetall: (key) => r.hgetall<Record<string, unknown>>(key),
+    // With automaticDeserialization off, HGETALL comes back raw: [field, value, field, value, …].
+    hgetall: async (key) => {
+      const raw = (await r.hgetall(key)) as unknown;
+      if (!raw) return null;
+      if (Array.isArray(raw)) {
+        if (raw.length === 0) return null;
+        const obj: Record<string, unknown> = {};
+        for (let i = 0; i + 1 < raw.length; i += 2) obj[String(raw[i])] = raw[i + 1];
+        return obj;
+      }
+      return Object.keys(raw as object).length ? (raw as Record<string, unknown>) : null;
+    },
     hincrby: (key, field, by) => r.hincrby(key, field, by),
     set: (key, value, ttl) => r.set(key, value, { ex: ttl }),
     get: (key) => r.get<string>(key),
