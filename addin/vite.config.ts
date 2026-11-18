@@ -49,11 +49,11 @@ function preloadFontsPlugin(): Plugin {
       order: "post",
       handler(html, ctx) {
         if (!ctx.bundle || /taskpane|commands/.test(ctx.filename)) return html;
-        const fonts = Object.keys(ctx.bundle).filter(
-          (f) =>
-            f.endsWith(".woff2") &&
-            /bricolage-grotesque-latin-standard-normal|atkinson-hyperlegible-latin-(400|700)-normal/.test(f),
-        );
+        // The phone page only uses the body font.
+        const wanted = /phone/.test(ctx.filename)
+          ? /atkinson-hyperlegible-latin-(400|700)-normal/
+          : /bricolage-grotesque-latin-standard-normal|atkinson-hyperlegible-latin-(400|700)-normal/;
+        const fonts = Object.keys(ctx.bundle).filter((f) => f.endsWith(".woff2") && wanted.test(f));
         return {
           html,
           tags: fonts.map((f) => ({
