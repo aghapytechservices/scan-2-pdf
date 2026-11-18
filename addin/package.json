@@ -15,12 +15,16 @@
   "dependencies": {
     "@fontsource-variable/bricolage-grotesque": "^5.3.0",
     "@fontsource/atkinson-hyperlegible": "^5.3.0",
+    "@upstash/redis": "^1.41.0",
     "pdf-lib": "^1.17.1",
-    "pdfjs-dist": "^4.10.38"
+    "pdfjs-dist": "^4.10.38",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",
+    "@types/node": "^26.6.6",
     "@types/office-js": "^1.0.400",
+    "@types/qrcode": "^1.5.6",
     "office-addin-debugging": "^6.0.0",
     "office-addin-dev-certs": "^2.0.0",
     "office-addin-manifest": "^2.0.0",

@@ -80,6 +80,7 @@ export default defineConfig({
         support: resolve(__dirname, "support.html"),
         taskpane: resolve(__dirname, "taskpane.html"),
         commands: resolve(__dirname, "commands.html"),
+        phone: resolve(__dirname, "phone.html"),
       },
     },
   },

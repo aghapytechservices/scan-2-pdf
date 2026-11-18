@@ -4,8 +4,9 @@
 
 - Works in new Outlook for Windows, classic Outlook (Microsoft 365) and Outlook on the web.
 - Scanning uses the free Scan 2 PDF Bridge app for Windows 10/11 (Microsoft Store: https://apps.microsoft.com/detail/9NNN9ZTWZ9TZ?cid=llms), which connects any scanner with a Windows (WIA) driver to the add-in. It runs only on the user's PC (127.0.0.1).
+- Scan with phone: the add-in shows a QR code; the phone photographs pages in the browser (no app), straightens them and removes shadows, then sends them end-to-end encrypted to the Outlook panel. Works on Mac too.
 - Features: flatbed, document feeder and double-sided scanning; preview, rotate, reorder and remove pages; PDF or JPEG output; 150/200/300 dpi; color, grayscale or black and white; Letter, Legal and A4; add JPG/PNG images from file.
-- Privacy: scans go from the scanner into the user's email draft only. No account, upload or tracking.
+- Privacy: scanner pages go from the scanner into the user's email draft only. Phone pages are encrypted on the phone (AES-256-GCM, key never sent to the server) and deleted from the relay within 15 minutes. No account or tracking.
 - License: MIT. Source: https://github.com/aghapytechservices/scan-2-pdf
 
 ## Pages

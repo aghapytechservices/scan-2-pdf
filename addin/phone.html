@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="theme-color" content="#0e1b36" />
+    <title>Scan with phone · Scan 2 PDF</title>
+    <link rel="icon" type="image/png" href="/assets/icon-32.png" />
+    <link rel="apple-touch-icon" href="/assets/icon-256.png" />
+    <script type="module" src="/src/phone.ts"></script>
+  </head>
+  <body class="phone">
+    <header class="ph-top">
+      <span class="ph-brand"><img src="/assets/icon-32.png" alt="" width="22" height="22" /> Scan 2 PDF</span>
+      <span id="conn" class="ph-conn" data-state="connecting">Connecting…</span>
+    </header>
+
+    <!-- Start: take photos, see what's been sent -->
+    <main id="home" class="ph-home" hidden>
+      <h1>Photograph each page</h1>
+      <p class="ph-lead">Pages you send appear in Outlook on your computer, ready to attach as a PDF.</p>
+
+      <label class="ph-primary">
+        <input id="camera" type="file" accept="image/*" capture="environment" />
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z" /><circle cx="12" cy="13" r="3.5" /></svg>
+        <span id="cameraLabel">Take a photo</span>
+      </label>
+      <label class="ph-secondary">
+        <input id="library" type="file" accept="image/*" multiple />
+        Choose from photos
+      </label>
+
+      <p class="ph-tip">For the cleanest result, lay the page flat on a darker surface, in even light, and fit the whole page in the picture.</p>
+
+      <section id="sentBox" class="ph-sent" hidden>
+        <h2>Sent to Outlook <span id="sentCount"></span></h2>
+        <ol id="sent"></ol>
+        <button id="doneBtn" type="button" class="ph-done">I'm done</button>
+      </section>
+    </main>
+
+    <!-- Editor: the straightened page, its look, corners -->
+    <section id="editor" class="ph-editor" hidden>
+      <div id="stage" class="ph-stage">
+        <canvas id="view"></canvas>
+        <div id="working" class="ph-working" hidden><span></span>Straightening the page…</div>
+      </div>
+
+      <div id="resultTools" class="ph-tools">
+        <div class="ph-looks" role="radiogroup" aria-label="Look">
+          <button type="button" data-look="document" aria-pressed="true">Document</button>
+          <button type="button" data-look="color" aria-pressed="false">Color</button>
+          <button type="button" data-look="original" aria-pressed="false">Original</button>
+        </div>
+        <div class="ph-row">
+          <button id="edgesBtn" type="button" class="ph-ghost">Adjust edges</button>
+          <button id="rotateBtn" type="button" class="ph-ghost">Rotate</button>
+        </div>
+        <div class="ph-row">
+          <button id="retakeBtn" type="button" class="ph-ghost">Retake</button>
+          <button id="sendBtn" type="button" class="ph-send">Send page</button>
+        </div>
+      </div>
+
+      <div id="cropTools" class="ph-tools" hidden>
+        <p class="ph-hint">Drag the four corners onto the corners of the page.</p>
+        <div class="ph-row">
+          <button id="wholeBtn" type="button" class="ph-ghost">Use whole photo</button>
+          <button id="applyBtn" type="button" class="ph-send">Done</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Finished -->
+    <main id="finished" class="ph-message" hidden>
+      <div class="ph-check" aria-hidden="true"></div>
+      <h1>Pages sent</h1>
+      <p id="finishedText">They're in Outlook now. You can close this page.</p>
+      <button id="moreBtn" type="button" class="ph-secondary-btn">Send more pages</button>
+    </main>
+
+    <!-- Problems with the link -->
+    <main id="problem" class="ph-message" hidden>
+      <h1 id="problemTitle">This code has expired</h1>
+      <p id="problemText">In Outlook, open Scan 2 PDF and choose <b>Scan with phone</b> to show a new QR code.</p>
+    </main>
+
+    <div id="toast" class="ph-toast" role="status" aria-live="polite" hidden></div>
+  </body>
+</html>
