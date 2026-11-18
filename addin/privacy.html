@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Privacy Policy | Scan 2 PDF for Outlook</title>
-    <meta name="description" content="Scan 2 PDF keeps your scans on your PC: documents go from your scanner into your Outlook email and nowhere else. No account, upload, cookies or tracking." />
+    <meta name="description" content="Scan 2 PDF keeps scans private: scanner pages stay on your PC, and phone pages are end-to-end encrypted and deleted within 15 minutes. No account or tracking." />
     <link rel="canonical" href="https://scan2pdf.aghapyts.com/privacy" />
     <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta name="theme-color" content="#1d4ed8" />
@@ -13,7 +13,7 @@
     <meta property="og:site_name" content="Scan 2 PDF" />
     <meta property="og:url" content="https://scan2pdf.aghapyts.com/privacy" />
     <meta property="og:title" content="Privacy Policy | Scan 2 PDF for Outlook" />
-    <meta property="og:description" content="Scan 2 PDF keeps your scans on your PC: documents go from your scanner into your Outlook email and nowhere else. No account, upload, cookies or tracking." />
+    <meta property="og:description" content="Scan 2 PDF keeps scans private: scanner pages stay on your PC, and phone pages are end-to-end encrypted and deleted within 15 minutes. No account or tracking." />
     <meta property="og:image" content="https://scan2pdf.aghapyts.com/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -21,7 +21,7 @@
     <meta property="og:locale" content="en_US" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Privacy Policy | Scan 2 PDF for Outlook" />
-    <meta name="twitter:description" content="Scan 2 PDF keeps your scans on your PC: documents go from your scanner into your Outlook email and nowhere else. No account, upload, cookies or tracking." />
+    <meta name="twitter:description" content="Scan 2 PDF keeps scans private: scanner pages stay on your PC, and phone pages are end-to-end encrypted and deleted within 15 minutes. No account or tracking." />
     <meta name="twitter:image" content="https://scan2pdf.aghapyts.com/og-image.png" />
     <script type="application/ld+json">
 {
@@ -87,7 +87,7 @@
       <section class="page-head">
         <div class="wrap">
           <h1>Privacy Policy</h1>
-          <p class="meta">Last updated: November 16, 2026</p>
+          <p class="meta">Last updated: November 18, 2026</p>
         </div>
       </section>
       <section class="section section-tight">
@@ -97,8 +97,9 @@
       information when you use the Scan 2 PDF Outlook add-in, the Scan 2 PDF Bridge app for Windows, and this website.</p>
 
       <h2>Summary</h2>
-      <p class="summary"><b>Your scanned documents never leave your computer except as attachments to the email you are writing.</b>
-      Aghapy Tech Services does not receive, store, or have access to your scans, your emails, or your Microsoft 365 account.</p>
+      <p class="summary"><b>Scanner pages never leave your computer except as attachments to the email you are writing. Phone
+      pages are encrypted on your phone, so we pass them along without being able to read them, and delete them within 15 minutes.</b>
+      Aghapy Tech Services does not have access to your scans, your emails, or your Microsoft 365 account.</p>
 
       <h2>What the add-in does with your data</h2>
       <ul>
@@ -106,6 +107,13 @@
           It sends them only to the add-in running on the same PC (over the local loopback address 127.0.0.1).
           The add-in builds the PDF or JPEG files in your browser and adds them to your email through Outlook.
           No scan is uploaded to any server operated by Aghapy Tech Services.</li>
+        <li><b>Phone scanning (optional).</b> When you choose <b>Scan with phone</b>, the add-in creates a one-time code
+          and shows it as a QR code. The code holds a random encryption key in the part of the web address that browsers
+          never send to a server. Your phone encrypts each photo with that key (AES-256-GCM) before sending it through
+          our server, and only the add-in on your computer has the key to decrypt it. Our server, and the Redis storage
+          service it uses (Upstash, through Vercel), only ever hold the encrypted data. Each page is deleted as soon as
+          the add-in receives it; anything left over, and the code itself, is deleted automatically after 15 minutes.
+          We don't keep copies, logs of your images, or any link between a code and you.</li>
         <li><b>Your email.</b> The add-in only adds attachments to the message you are composing. It does not read
           your message contents, recipients, mailbox, or contacts.</li>
         <li><b>Settings.</b> Your scan preferences (scanner, resolution, color, paper size, output format) are stored

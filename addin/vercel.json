@@ -18,8 +18,21 @@
       ]
     },
     {
-      "source": "/(taskpane|commands).html",
+      "source": "/(taskpane|commands|phone)(.html)?",
       "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex"
+        }
+      ]
+    },
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        },
         {
           "key": "X-Robots-Tag",
           "value": "noindex"
@@ -43,6 +56,10 @@
     {
       "source": "/terms",
       "destination": "/terms.html"
+    },
+    {
+      "source": "/phone",
+      "destination": "/phone.html"
     }
   ]
 }

@@ -2,6 +2,7 @@ import "./styles.css";
 import { BridgeError, BridgeUnreachableError, ScanBridge, type ColorMode, type PageSize, type ScanSource } from "./bridge";
 import { buildPdfBase64, pageToJpegBase64, type PageImage } from "./pdf";
 import { initFeedback, recordSuccessfulAttach, setBridgeEdition } from "./feedback";
+import { initPhonePanel } from "./phonepanel";
 import { PdfReadError, readPdf, type PdfPageSource } from "./pdfsource";
 
 const DEFAULT_BRIDGE_URL = "http://127.0.0.1:52801";
@@ -650,6 +651,15 @@ Office.onReady((info) => {
   platform = detectPlatform();
   initFeedback();
   initDragAndDrop();
+  initPhonePanel({
+    onPage: async (p) => {
+      await addPage(p.dataUrl, null, undefined, { width: p.width, height: p.height });
+      renderPages();
+    },
+    onFinished: (n) => {
+      if (n) showMessage("success", `Added ${n} page${n === 1 ? "" : "s"} from your phone. Review them, then attach.`);
+    },
+  });
   renderPages();
   void connect();
 });
