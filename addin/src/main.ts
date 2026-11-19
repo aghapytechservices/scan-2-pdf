@@ -370,6 +370,7 @@ async function connect() {
       ...scanners.map((s) => {
         const o = document.createElement("option");
         o.value = s.id;
+        o.dataset.name = s.name;
         o.textContent = s.manufacturer && !s.name.includes(s.manufacturer) ? `${s.name} (${s.manufacturer})` : s.name;
         return o;
       }),
@@ -413,6 +414,7 @@ async function scan() {
   try {
     const { pages: scanned, warning, note } = await bridge.scan({
       deviceId: el.scanner.value || null,
+      deviceName: el.scanner.selectedOptions[0]?.dataset.name || null,
       source,
       dpi,
       color: el.color.value as ColorMode,
