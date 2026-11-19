@@ -43,10 +43,50 @@ public static class WinRtScanner
             return null;
         }
 
+        if (req.Source == ScanSource.Duplex && !scanner.FeederConfiguration.CanScanDuplex)
+            throw new ScanException("This scanner doesn't support double-sided feeder scanning. Choose Feeder or Flatbed.", 400);
+
+        // First try with the requested settings. Some drivers (seen with an HP OfficeJet over the network)
+        // answer "feeder empty" straight away when they dislike a setting such as paper size, page limit or
+        // JPEG output. If that happens within a few seconds, try once more with the driver's own defaults.
+        var started = DateTime.UtcNow;
+        var first = await ScanOnceAsync(scanner, info.Name, req, maxPages, useDriverDefaults: false);
+        if (first.Pages is { Count: > 0 } pages1) return Done(pages1);
+
+        var quick = DateTime.UtcNow - started < TimeSpan.FromSeconds(5);
+        AppLog.Write($"Modern scanner API: no pages ({first.Why}) after {(DateTime.UtcNow - started).TotalSeconds:0.0} s.");
+        if (!quick) throw new ScanException("The document feeder is empty. Load pages and try again.", 409);
+
+        await Task.Delay(1500);
+        var again = await ImageScanner.FromIdAsync(info.Id) ?? scanner;
+        var second = await ScanOnceAsync(again, info.Name, req, maxPages, useDriverDefaults: true);
+        if (second.Pages is { Count: > 0 } pages2) return Done(pages2);
+
+        AppLog.Write($"Modern scanner API: still no pages with the driver's defaults ({second.Why}).");
+        throw new ScanException(
+            "The scanner says its document feeder is empty. Check the pages are pushed in until the feeder grabs them " +
+            "(most printers show \"Document loaded\"), then try again. If it still fails, try the same scan in the Windows Scan app.", 409);
+
+        static ScanResult Done(List<string> pages)
+        {
+            AppLog.Write($"Modern scanner API: {pages.Count} page(s) scanned.");
+            return new ScanResult(pages);
+        }
+    }
+
+    private record Attempt(List<string>? Pages, string Why);
+
+    /// <summary>One feeder scan. Returns the pages, or none with the reason (empty feeder, or zero files).</summary>
+    private static async Task<Attempt> ScanOnceAsync(ImageScanner scanner, string name, ScanRequest req, int maxPages, bool useDriverDefaults)
+    {
         var cfg = scanner.FeederConfiguration;
 
-        // Output format: JPEG if the scanner can produce it; otherwise a lossless format we convert below.
-        foreach (var format in new[] { ImageScannerFormat.Jpeg, ImageScannerFormat.Png, ImageScannerFormat.DeviceIndependentBitmap, ImageScannerFormat.Tiff })
+        // Output format: with our settings prefer JPEG (smaller); with driver defaults prefer lossless formats,
+        // which every driver handles (we convert to JPEG ourselves).
+        var formats = useDriverDefaults
+            ? new[] { ImageScannerFormat.Png, ImageScannerFormat.DeviceIndependentBitmap, ImageScannerFormat.Tiff, ImageScannerFormat.Jpeg }
+            : new[] { ImageScannerFormat.Jpeg, ImageScannerFormat.Png, ImageScannerFormat.DeviceIndependentBitmap, ImageScannerFormat.Tiff };
+        foreach (var format in formats)
         {
             if (cfg.IsFormatSupported(format)) { cfg.Format = format; break; }
         }
@@ -62,33 +102,31 @@ public static class WinRtScanner
         float dpi = Math.Clamp(req.Dpi, cfg.MinResolution.DpiX, cfg.MaxResolution.DpiX);
         cfg.DesiredResolution = new ImageScannerResolution { DpiX = dpi, DpiY = dpi };
 
-        var media = req.PageSize switch
+        if (!useDriverDefaults)
         {
-            PageSize.A4 => PrintMediaSize.IsoA4,
-            PageSize.Legal => PrintMediaSize.NorthAmericaLegal,
-            _ => PrintMediaSize.NorthAmericaLetter
-        };
-        if (cfg.IsPageSizeSupported(media, PrintOrientation.Portrait))
+            var media = req.PageSize switch
+            {
+                PageSize.A4 => PrintMediaSize.IsoA4,
+                PageSize.Legal => PrintMediaSize.NorthAmericaLegal,
+                _ => PrintMediaSize.NorthAmericaLetter
+            };
+            if (cfg.IsPageSizeSupported(media, PrintOrientation.Portrait))
+            {
+                cfg.PageSize = media;
+                cfg.PageOrientation = PrintOrientation.Portrait;
+            }
+            cfg.MaxNumberOfPages = (uint)Math.Max(0, maxPages); // 0 would mean "all"
+        }
+        else if (cfg.CanAutoDetectPageSize)
         {
-            cfg.PageSize = media;
-            cfg.PageOrientation = PrintOrientation.Portrait;
+            cfg.AutoDetectPageSize = true;
         }
 
-        if (req.Source == ScanSource.Duplex)
-        {
-            if (!cfg.CanScanDuplex)
-                throw new ScanException("This scanner doesn't support double-sided feeder scanning. Choose Feeder or Flatbed.", 400);
-            cfg.Duplex = true;
-        }
-        else if (cfg.CanScanDuplex)
-        {
-            cfg.Duplex = false;
-        }
+        if (cfg.CanScanDuplex) cfg.Duplex = req.Source == ScanSource.Duplex;
 
-        cfg.MaxNumberOfPages = (uint)Math.Max(0, maxPages); // 0 would mean "all"; we cap at maxPages
-
-        var actual = cfg.ActualResolution;
-        AppLog.Write($"Modern scanner API: \"{info.Name}\", feeder, {cfg.Format}, {cfg.ColorMode}, {actual.DpiX:0} dpi, duplex {cfg.Duplex}.");
+        AppLog.Write($"Modern scanner API: \"{name}\", feeder{(useDriverDefaults ? " (driver defaults)" : "")}, {cfg.Format}, {cfg.ColorMode}, " +
+                     $"{cfg.ActualResolution.DpiX:0} dpi, duplex {cfg.Duplex}, page size {(useDriverDefaults ? (cfg.AutoDetectPageSize ? "auto" : "default") : cfg.PageSize.ToString())}, " +
+                     $"max pages {cfg.MaxNumberOfPages}, auto-detect {(cfg.CanAutoDetectPageSize ? "yes" : "no")}.");
 
         var dir = Path.Combine(Path.GetTempPath(), "Scan2PdfBridge", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
@@ -104,7 +142,7 @@ public static class WinRtScanner
             }
             catch (Exception ex) when (ex.HResult == unchecked((int)0x80210003)) // WIA_ERROR_PAPER_EMPTY
             {
-                throw new ScanException("The document feeder is empty. Load pages and try again.", 409);
+                return new Attempt(null, "driver reported WIA_ERROR_PAPER_EMPTY 0x80210003");
             }
             catch (Exception ex) when (ex.HResult == unchecked((int)0x80210002)) // WIA_ERROR_PAPER_JAM
             {
@@ -123,15 +161,12 @@ public static class WinRtScanner
             }
 
             var files = result.ScannedFiles;
-            if (files.Count == 0)
-                throw new ScanException("The document feeder is empty. Load pages and try again.", 409);
+            if (files.Count == 0) return new Attempt(null, "scan completed with 0 files");
 
             var pages = new List<string>(files.Count);
             foreach (var f in files)
                 pages.Add(Convert.ToBase64String(ToJpeg(await File.ReadAllBytesAsync(f.Path), req.JpegQuality)));
-
-            AppLog.Write($"Modern scanner API: {pages.Count} page(s) scanned.");
-            return new ScanResult(pages);
+            return new Attempt(pages, "ok");
         }
         finally
         {
