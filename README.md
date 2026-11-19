@@ -161,6 +161,10 @@ attach anything over 20 MB and explains how to make it smaller.
 - The bridge listens on plain HTTP on loopback. Chromium treats loopback as a secure context, so this works from
   the HTTPS task pane. If your policy requires it, add an HTTPS endpoint in `appsettings.json`.
 
+## Support the project
+
+Scan 2 PDF is free and open source. If it saves you time, you can [buy me a coffee](https://buymeacoffee.com/aghapyts). It helps cover hosting and code signing, and time for new features.
+
 ## Credits
 
 Scan 2 PDF is developed and maintained by **Aghapy Tech Services**.

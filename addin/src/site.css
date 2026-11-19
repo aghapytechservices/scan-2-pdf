@@ -374,3 +374,7 @@
 .uses-list b { color: var(--ink); }
 @media (max-width: 900px) { .uses { grid-template-columns: 1fr; } }
 @media (max-width: 600px) { .uses-list { grid-template-columns: 1fr; } }
+
+/* Buy me a coffee, under the share band text */
+.share-band .coffee { margin-top: 0.75rem !important; font-size: 0.98rem; opacity: 0.95; }
+.share-band .coffee a { font-weight: 700; text-underline-offset: 3px; color: var(--blue); }

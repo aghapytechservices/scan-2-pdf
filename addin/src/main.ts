@@ -147,10 +147,17 @@ function setStatus(state: Status, text: string) {
   const filesOnly = state === "files";
   el.macHelp.classList.toggle("hidden", !filesOnly);
   el.scanControls.classList.toggle("hidden", filesOnly);
+  el.scanBtn.classList.toggle("hidden", filesOnly);
+  // Without a scanner connection, "Add files" becomes the main action in the button row.
   el.fileLabel.className = filesOnly
-    ? "block w-full cursor-pointer rounded-md bg-blue-700 px-3 py-2 text-center font-semibold text-white hover:bg-blue-800"
-    : "block cursor-pointer text-center text-xs text-blue-700 hover:underline";
+    ? "flex min-w-0 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md bg-blue-700 px-3 py-2 font-semibold text-white shadow-sm hover:bg-blue-800"
+    : FILE_BTN_CLASS;
+  const fileText = document.getElementById("fileLabelText");
+  if (fileText) fileText.textContent = filesOnly ? "Add PDFs or images" : "File";
 }
+
+const FILE_BTN_CLASS =
+  "flex shrink-0 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:border-blue-700 hover:text-blue-800";
 
 function showMessage(kind: "info" | "success" | "error", text: string) {
   const styles = {
@@ -214,12 +221,21 @@ async function addPage(dataUrl: string, dpi: number | null, pdf?: PdfPageSource,
   pages.push({ id: newId(), dataUrl, rotation: 0, dpi, width, height, pdf });
 }
 
-function iconButton(label: string, title: string, onClick: () => void, danger = false) {
+const ICONS: Record<string, string> = {
+  left: '<path d="M15 6l-6 6 6 6"/>',
+  right: '<path d="M9 6l6 6-6 6"/>',
+  rotate: '<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>',
+  remove: '<path d="M6 6l12 12M18 6L6 18"/>',
+};
+
+function iconButton(icon: keyof typeof ICONS, title: string, onClick: () => void, danger = false, disabled = false) {
   const b = document.createElement("button");
   b.type = "button";
   b.title = title;
-  b.textContent = label;
-  b.className = `h-6 min-w-6 rounded bg-white/90 px-1 text-xs shadow-sm hover:bg-white ${danger ? "text-red-700" : "text-slate-700"}`;
+  b.setAttribute("aria-label", title);
+  b.disabled = disabled;
+  b.innerHTML = `<svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[icon]}</svg>`;
+  b.className = `grid h-6 flex-1 place-items-center rounded hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent ${danger ? "text-slate-500 hover:!bg-red-50 hover:text-red-700" : "text-slate-600 hover:text-slate-900"}`;
   b.addEventListener("click", onClick);
   return b;
 }
@@ -228,41 +244,41 @@ function renderPages() {
   el.pages.replaceChildren();
   pages.forEach((p, i) => {
     const li = document.createElement("li");
-    li.className = "thumb group relative overflow-hidden rounded border border-slate-200 bg-slate-50";
+    li.className = "thumb overflow-hidden rounded-md bg-white ring-1 ring-slate-200";
 
     const frame = document.createElement("button");
     frame.type = "button";
-    frame.title = "Click to preview";
-    frame.className = "flex aspect-[3/4] w-full cursor-zoom-in items-center justify-center p-1";
+    frame.title = `Preview page ${i + 1}`;
+    frame.className = "relative flex aspect-[3/4] w-full cursor-zoom-in items-center justify-center bg-slate-50 p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600/50";
     frame.addEventListener("click", () => openPreview(i));
     const img = document.createElement("img");
     img.src = p.dataUrl;
     img.alt = `Page ${i + 1}`;
-    img.className = "max-h-full max-w-full shadow-sm";
+    img.className = "max-h-full max-w-full bg-white shadow-sm";
     img.style.transform = `rotate(${p.rotation}deg)`;
     if (p.rotation % 180 !== 0) img.style.scale = String(Math.min(1, p.height / p.width, p.width / p.height) || 1);
-    frame.append(img);
-
     const label = document.createElement("span");
-    label.className = "absolute bottom-1 left-1 rounded bg-slate-800/70 px-1.5 text-[10px] text-white";
+    label.className = "absolute left-1 top-1 min-w-4 rounded bg-slate-800/75 px-1 text-center text-[10px] font-semibold leading-4 text-white";
     label.textContent = String(i + 1);
+    frame.append(img, label);
 
+    // Tools sit under the page so they never cover it.
     const tools = document.createElement("div");
-    tools.className = "absolute right-1 top-1 flex gap-1";
+    tools.className = "flex border-t border-slate-100 px-0.5 py-0.5";
     tools.append(
-      iconButton("◀", "Move earlier", () => movePage(i, -1)),
-      iconButton("▶", "Move later", () => movePage(i, 1)),
-      iconButton("⟳", "Rotate", () => {
+      iconButton("left", "Move earlier", () => movePage(i, -1), false, i === 0),
+      iconButton("right", "Move later", () => movePage(i, 1), false, i === pages.length - 1),
+      iconButton("rotate", "Rotate", () => {
         p.rotation = (p.rotation + 90) % 360;
         renderPages();
       }),
-      iconButton("✕", "Remove page", () => {
+      iconButton("remove", "Remove page", () => {
         pages.splice(i, 1);
         renderPages();
       }, true),
     );
 
-    li.append(frame, label, tools);
+    li.append(frame, tools);
     el.pages.append(li);
   });
 
