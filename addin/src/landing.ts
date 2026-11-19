@@ -1,6 +1,7 @@
 import "@fontsource-variable/bricolage-grotesque/standard.css";
 import "@fontsource/atkinson-hyperlegible/400.css";
 import "@fontsource/atkinson-hyperlegible/700.css";
+import "@fontsource/cookie/latin-400.css"; // Buy me a coffee button
 import "./styles.css";
 import "./site.css";
 
