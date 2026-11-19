@@ -197,6 +197,7 @@ app.MapGet("/health", () => Results.Ok(new
     ok = true,
     version = TrayApp.Version,
     edition = AppPaths.IsPackaged ? "store" : "standalone",
+    features = new[] { "stop" }, // what this bridge supports, so the add-in shows only what works
     updateAvailable = Updater.Available?.Display  // standalone only: newer release found by the update check
 }));
 
@@ -211,6 +212,9 @@ app.MapPost("/store-review", async () =>
 
 // Live progress of the current scan (pages so far, elapsed seconds), polled by the add-in.
 app.MapGet("/scan/progress", () => Results.Ok(ScanProgress.Snapshot()));
+
+// Stop the scan in progress. Pages scanned so far are returned by the /scan request that's running.
+app.MapPost("/scan/cancel", () => Results.Ok(new { ok = true, stopping = ScanProgress.RequestStop() }));
 
 app.MapGet("/scanners", async () =>
 {
@@ -253,14 +257,32 @@ app.MapPost("/scan", async (ScanRequest req) =>
             {
                 throw;
             }
+            catch (OperationCanceledException)
+            {
+                throw; // Stop pressed: don't fall back to WIA
+            }
+            catch (Exception ex) when (ScanErrors.IsNetwork(ex.HResult))
+            {
+                // The scanner didn't answer over the network. WIA would talk to it over the same network and
+                // usually just time out again (another ~20 s), so say so now.
+                AppLog.Write($"Modern scanner API: network error 0x{ex.HResult:X8}; not retrying through WIA.");
+                throw ScanErrors.FromHResult(ex.HResult);
+            }
             catch (Exception ex)
             {
                 AppLog.Write("Modern scanner API failed; falling back to WIA.", ex);
             }
         }
+        if (result is null && ScanProgress.StopRequested)
+            result = new ScanResult([], Note: ScanProgress.StoppedNote(0));
         result ??= await StaRunner.Run(() => WiaScanner.Scan(req, maxPages));
         AppLog.Write($"Scan finished: {result.Pages.Count} page(s)");
         return Results.Ok(result);
+    }
+    catch (OperationCanceledException)
+    {
+        AppLog.Write("Scan stopped before any page was scanned.");
+        return Results.Ok(new ScanResult([], Note: ScanProgress.StoppedNote(0)));
     }
     catch (ScanException ex)
     {

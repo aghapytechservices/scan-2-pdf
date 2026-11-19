@@ -22,6 +22,7 @@ const el = {
   dpi: $<HTMLSelectElement>("dpi"),
   pageSize: $<HTMLSelectElement>("pageSize"),
   scanBtn: $<HTMLButtonElement>("scanBtn"),
+  stopBtn: $<HTMLButtonElement>("stopBtn"),
   fileInput: $<HTMLInputElement>("fileInput"),
   fileLabel: $<HTMLLabelElement>("fileLabel"),
   scanControls: $<HTMLDivElement>("scanControls"),
@@ -59,6 +60,7 @@ const getFormat = (): OutputFormat => (formatRadios().find((r) => r.checked)?.va
 let pages: PageImage[] = [];
 let bridgeOnline = false;
 let busy = false;
+let bridgeCanStop = false; // bridge 1.6.3+ can stop a scan in progress
 
 interface Settings {
   bridgeUrl: string;
@@ -358,6 +360,7 @@ async function connect() {
   try {
     const health = await bridge.health();
     setBridgeEdition(health.edition, () => bridge.requestStoreReview());
+    bridgeCanStop = health.features?.includes("stop") ?? false;
     const updateNote = document.getElementById("updateNote");
     if (updateNote) {
       updateNote.classList.toggle("hidden", !health.updateAvailable);
@@ -403,11 +406,19 @@ async function scan() {
   // Show live progress while the scanner works (a full feeder at high resolution can take minutes).
   const started = Date.now();
   const clock = (sec: number) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
+  let stopping = false;
+  if (bridgeCanStop) {
+    el.stopBtn.disabled = false;
+    el.stopBtn.textContent = "Stop";
+    el.stopBtn.classList.remove("hidden");
+    el.stopBtn.onclick = () => void requestStop();
+  }
   const progressTimer = window.setInterval(async () => {
     const p = await bridge.progress();
     const elapsed = clock(Math.floor((Date.now() - started) / 1000));
     if (!busy) return;
-    if (p && p.pages > 0) showMessage("info", `Scanning… ${p.pages} page${p.pages === 1 ? "" : "s"} so far (${elapsed})`);
+    if (stopping || p?.stopping) showMessage("info", `Stopping… the scanner finishes the page it's on (${elapsed})`);
+    else if (p && p.pages > 0) showMessage("info", `Scanning… ${p.pages} page${p.pages === 1 ? "" : "s"} so far (${elapsed})`);
     else showMessage("info", `${source === "flatbed" ? "Scanning" : "Scanning from the feeder"}… (${elapsed})`);
   }, 1000);
 
@@ -425,6 +436,7 @@ async function scan() {
     renderPages();
     const added = `Added ${scanned.length} page${scanned.length === 1 ? "" : "s"}.`;
     if (warning) showMessage("error", `${added} ${warning}`);
+    else if (scanned.length === 0 && note) showMessage("info", note);
     else if (note) showMessage("info", note);
     else
       showMessage(
@@ -441,8 +453,27 @@ async function scan() {
     }
   } finally {
     window.clearInterval(progressTimer);
+    el.stopBtn.classList.add("hidden");
+    el.stopBtn.onclick = null;
     busy = false;
     refreshButtons();
+  }
+
+  // Stop: ask the bridge to stop; the scan request above then returns the pages kept.
+  async function requestStop() {
+    if (stopping) return;
+    stopping = true;
+    el.stopBtn.disabled = true;
+    el.stopBtn.textContent = "Stopping…";
+    showMessage("info", "Stopping… the scanner finishes the page it's on.");
+    try {
+      await bridge.cancelScan();
+    } catch {
+      stopping = false;
+      el.stopBtn.disabled = false;
+      el.stopBtn.textContent = "Stop";
+      showMessage("error", "Couldn't stop the scan. It will finish on its own.");
+    }
   }
 }
 

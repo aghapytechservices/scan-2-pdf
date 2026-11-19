@@ -3,6 +3,9 @@ namespace ScanBridge;
 /// <summary>Turns scanner and network error codes into messages people can act on.</summary>
 public static class ScanErrors
 {
+    /// <summary>Errors talking to a network scanner (timeouts, can't connect). Retrying another way over the same network won't help.</summary>
+    public static bool IsNetwork(int hr) => (uint)hr is 0x80072EE2 or 0x80072EFD or 0x80072EFE or 0x80072EFF or 0x80072F78 or 0x8007045A or 0x80070079;
+
     public static ScanException FromHResult(int hr, string? detail = null) => (uint)hr switch
     {
         0x80210003 => new ScanException("The document feeder is empty. Load pages, check the right scanner is selected, and try again.", 409),
