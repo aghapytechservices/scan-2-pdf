@@ -104,7 +104,7 @@ public static class WinRtScanner
             }
             catch (Exception ex) when (ex.HResult == unchecked((int)0x80210003)) // WIA_ERROR_PAPER_EMPTY
             {
-                throw new ScanException("The document feeder is empty. Load pages and try again.", 409);
+                throw new ScanException("The document feeder is empty. Load pages, check the right scanner is selected, and try again.", 409);
             }
             catch (Exception ex) when (ex.HResult == unchecked((int)0x80210002)) // WIA_ERROR_PAPER_JAM
             {
@@ -124,7 +124,7 @@ public static class WinRtScanner
 
             var files = result.ScannedFiles;
             if (files.Count == 0)
-                throw new ScanException("The document feeder is empty. Load pages and try again.", 409);
+                throw new ScanException("The document feeder is empty. Load pages, check the right scanner is selected, and try again.", 409);
 
             var pages = new List<string>(files.Count);
             foreach (var f in files)
