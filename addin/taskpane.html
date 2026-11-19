@@ -23,12 +23,25 @@
       </p>
 
       <!-- Help shown when the bridge can't be reached -->
-      <div id="bridgeHelp" class="hidden rounded-md bg-amber-50 border border-amber-200 p-2.5 text-xs leading-relaxed space-y-1.5">
+      <div id="bridgeHelp" class="hidden rounded-md bg-amber-50 border border-amber-200 p-2.5 text-xs leading-relaxed space-y-2">
         <p class="font-semibold text-amber-900">Can't reach the Scan 2 PDF Bridge on this PC.</p>
+        <div class="space-y-1.5">
+          <p class="text-amber-900">Not installed yet? Get the free Windows app:</p>
+          <a href="https://apps.microsoft.com/detail/9NNN9ZTWZ9TZ?cid=addin-panel" target="_blank" rel="noopener"
+            class="flex items-center justify-center gap-1.5 rounded-md bg-blue-700 px-3 py-1.5 text-center font-semibold text-white no-underline hover:bg-blue-800">
+            Get it from the Microsoft Store
+          </a>
+          <a href="https://github.com/aghapytechservices/scan-2-pdf/releases/latest/download/Scan2PdfBridge-win-x64.zip" target="_blank" rel="noopener"
+            class="flex items-center justify-center rounded-md border border-amber-300 bg-white px-3 py-1.5 text-center font-semibold text-slate-800 no-underline hover:border-slate-400">
+            Standalone download (.zip)
+          </a>
+          <p class="text-amber-800">The Store version updates itself. Use the standalone download if your PC doesn't have the Microsoft Store: unzip it and run <b>install.cmd</b>.</p>
+        </div>
+        <p class="font-semibold text-amber-900 pt-0.5">Already installed?</p>
         <ol class="list-decimal pl-4 text-amber-900 space-y-1">
-          <li>Make sure the Scan 2 PDF Bridge is running (look for its icon in the system tray). Not installed yet? <a href="https://apps.microsoft.com/detail/9NNN9ZTWZ9TZ?cid=addin-panel" target="_blank" rel="noopener" class="font-semibold underline">Get it from the Microsoft Store</a>.</li>
+          <li>Make sure the bridge is running: look for its icon in the system tray. If it's not there, open <b>Scan 2 PDF Bridge</b> from the Start menu (Store version) or run <b>Scan2PdfBridge.exe</b> again (standalone).</li>
           <li>If Outlook or your browser asked to let this add-in connect to <b>apps on this device</b>, choose <b>Allow</b>.</li>
-          <li>Still stuck? Scan with your scanner's own software, then use <b>Add PDFs or images from file</b> below.</li>
+          <li>Still stuck? Use <b>Scan with phone</b> below, or scan with your scanner's software and use <b>Add PDFs or images from file</b>.</li>
         </ol>
       </div>
 
