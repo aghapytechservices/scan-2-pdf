@@ -5,7 +5,7 @@ public static class ScanErrors
 {
     public static ScanException FromHResult(int hr, string? detail = null) => (uint)hr switch
     {
-        0x80210003 => new ScanException("The document feeder is empty. Load pages and try again.", 409),
+        0x80210003 => new ScanException("The document feeder is empty. Load pages, check the right scanner is selected, and try again.", 409),
         0x80210002 => new ScanException("Paper jam. Clear the scanner and try again.", 409),
         0x80210006 => new ScanException("The scanner is busy. Try again in a moment.", 409),
         0x80210005 => new ScanException("The scanner is offline.", 503),

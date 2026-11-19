@@ -194,8 +194,22 @@
         </div>
       </section>
 
+      <details class="text-[11px] text-slate-500">
+        <summary class="cursor-pointer select-none hover:text-slate-700">Advanced</summary>
+        <div class="mt-1.5 space-y-1.5">
+          <label class="block">
+            <span>Scan bridge URL</span>
+            <input id="bridgeUrl" class="mt-0.5 w-full rounded border border-slate-300 px-2 py-1" />
+          </label>
+          <label class="block">
+            <span>JPEG quality (<span id="qualityValue">75</span>)</span>
+            <input id="quality" type="range" min="40" max="95" step="5" value="75" class="w-full" />
+          </label>
+        </div>
+      </details>
+
       <!-- Attach: pinned to the bottom so it's always in reach -->
-      <section class="sticky bottom-0 z-10 -mx-3 mt-auto space-y-1.5 border-t border-slate-200 bg-white/95 px-3 pb-3 pt-2 backdrop-blur">
+      <section class="sticky bottom-0 z-10 -mx-3 mt-auto space-y-1.5 border-t border-slate-200 bg-white/95 px-3 pb-2 pt-2 backdrop-blur">
         <div id="message" class="hidden rounded-md px-2.5 py-2 text-xs"></div>
         <div class="flex items-center gap-1.5">
           <div class="flex shrink-0 rounded-md bg-slate-100 p-0.5" role="radiogroup" aria-label="Attach as">
@@ -218,28 +232,17 @@
           class="w-full rounded-md bg-emerald-700 px-3 py-2 font-semibold text-white shadow-sm hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/40 disabled:cursor-not-allowed disabled:opacity-50">
           <span id="attachLabel">Attach PDF to email</span>
         </button>
+        <footer class="space-y-0.5 pt-0.5 text-center text-[10.5px] leading-tight text-slate-500">
+          <p class="flex items-center justify-center gap-x-1.5">
+            <a href="/support" target="_blank" rel="noopener" class="hover:underline">Help</a>
+            <span aria-hidden="true">·</span><button id="footer-share" type="button" class="hover:underline">Share</button>
+            <span aria-hidden="true">·</span><button id="footer-feedback" type="button" class="hover:underline">Feedback</button>
+            <span aria-hidden="true">·</span><a href="/privacy" target="_blank" rel="noopener" class="hover:underline">Privacy</a>
+          </p>
+          <p>© <span id="year">2026</span> <a href="https://aghapyts.com" target="_blank" rel="noopener" class="text-blue-700 hover:underline">Aghapy Tech Services</a></p>
+        </footer>
       </section>
 
-      <footer class="-mt-1 flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 pb-2 text-[11px] text-slate-500">
-        <span>© <span id="year">2026</span> <a href="https://aghapyts.com" target="_blank" rel="noopener" class="text-blue-700 hover:underline">Aghapy Tech Services</a></span>
-        <span aria-hidden="true">·</span><a href="/support" target="_blank" rel="noopener" class="hover:underline">Help</a>
-        <span aria-hidden="true">·</span><button id="footer-share" type="button" class="hover:underline">Share</button>
-        <span aria-hidden="true">·</span><button id="footer-feedback" type="button" class="hover:underline">Feedback</button>
-        <span aria-hidden="true">·</span><a href="/privacy" target="_blank" rel="noopener" class="hover:underline">Privacy</a>
-        <details class="w-full text-center">
-          <summary class="cursor-pointer select-none hover:text-slate-700">Advanced</summary>
-          <div class="mt-1.5 space-y-1.5 text-left">
-            <label class="block">
-              <span>Scan bridge URL</span>
-              <input id="bridgeUrl" class="mt-0.5 w-full rounded border border-slate-300 px-2 py-1" />
-            </label>
-            <label class="block">
-              <span>JPEG quality (<span id="qualityValue">75</span>)</span>
-              <input id="quality" type="range" min="40" max="95" step="5" value="75" class="w-full" />
-            </label>
-          </div>
-        </details>
-      </footer>
 
     </main>
 
