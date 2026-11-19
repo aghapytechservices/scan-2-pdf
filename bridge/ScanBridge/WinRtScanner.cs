@@ -230,8 +230,6 @@ public static class WinRtScanner
         }
         return await done.Task;
     }
-        return devices.Count == 1 ? devices[0] : null;
-    }
 
     /// <summary>Re-encodes any scanned image (JPEG/PNG/BMP/TIFF) as JPEG at the requested quality.</summary>
     private static byte[] ToJpeg(byte[] input, int quality)
