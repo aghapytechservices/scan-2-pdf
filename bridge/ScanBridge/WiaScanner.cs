@@ -144,7 +144,7 @@ public static class WiaScanner
                 if (image is null) // feeder empty
                 {
                     if (pages.Count == 0)
-                        throw new ScanException("The document feeder is empty. Load pages and try again.", 409);
+                        throw new ScanException("The document feeder is empty. Load pages, check the right scanner is selected, and try again.", 409);
                     break; // normal end of a feeder batch
                 }
 
@@ -455,7 +455,7 @@ public static class WiaScanner
         WIA_ERROR_OFFLINE => new ScanException("The scanner is offline.", 503),
         WIA_ERROR_COVER_OPEN => new ScanException("The scanner cover is open.", 409),
         WIA_S_NO_DEVICE_AVAILABLE => new ScanException("No scanner is available.", 404),
-        WIA_ERROR_PAPER_EMPTY => new ScanException("The document feeder is empty.", 409),
+        WIA_ERROR_PAPER_EMPTY => new ScanException("The document feeder is empty. Load pages, check the right scanner is selected, and try again.", 409),
         _ => ScanErrors.FromHResult(ex.HResult, ex.Message)
     };
 
