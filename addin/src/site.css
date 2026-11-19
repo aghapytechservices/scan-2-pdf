@@ -375,6 +375,17 @@
 @media (max-width: 900px) { .uses { grid-template-columns: 1fr; } }
 @media (max-width: 600px) { .uses-list { grid-template-columns: 1fr; } }
 
-/* Buy me a coffee, under the share band text */
-.share-band .coffee { margin-top: 0.75rem !important; font-size: 0.98rem; opacity: 0.95; }
-.share-band .coffee a { font-weight: 700; text-underline-offset: 3px; color: var(--blue); }
+/* Buy me a coffee: styled like the official button, served from this site (no third-party script or font) */
+.share-band .coffee { margin-top: 1.1rem; display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1rem; color: #2a3956; font-size: 0.98rem; }
+.bmc-btn {
+  display: inline-flex; align-items: center; gap: 0.45rem; height: 48px; padding: 0 1.15rem 0 0.9rem;
+  background: #ffdd00; color: #000 !important; border: 1px solid #000; border-radius: 10px;
+  font-family: "Cookie", cursive; font-size: 1.75rem; line-height: 1; text-decoration: none;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.85); transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.bmc-btn svg { width: 26px; height: 26px; flex: none; }
+.bmc-btn span { transform: translateY(1px); }
+.bmc-btn:hover { transform: translateY(-1px); box-shadow: 0 3px 0 rgba(0, 0, 0, 0.85); }
+.bmc-btn:active { transform: translateY(1px); box-shadow: 0 1px 0 rgba(0, 0, 0, 0.85); }
+.bmc-btn:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { .bmc-btn { transition: none; } }
