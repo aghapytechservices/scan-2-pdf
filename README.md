@@ -163,7 +163,7 @@ attach anything over 20 MB and explains how to make it smaller.
 
 ## Support the project
 
-Scan 2 PDF is free and open source. If it saves you time, you can [buy me a coffee](https://buymeacoffee.com/aghapyts). It helps cover hosting and code signing, and time for new features.
+Scan 2 PDF is free and open source. If it saves you time, you can [buy me a coffee](https://buymeacoffee.com/kbesada). It helps cover hosting and code signing, and time for new features.
 
 ## Credits
 
