@@ -242,7 +242,11 @@ app.MapPost("/scan", async (ScanRequest req) =>
             try
             {
                 var scanners = await StaRunner.Run(WiaScanner.ListScanners);
-                var name = scanners.FirstOrDefault(x => x.Id == req.DeviceId)?.Name ?? (scanners.Count == 1 ? scanners[0].Name : null);
+                // Network scanners can briefly drop out of the WIA list (e.g. right after a timeout): then use
+                // the name the add-in showed, so the modern API can still find the scanner.
+                var name = scanners.FirstOrDefault(x => x.Id == req.DeviceId)?.Name
+                           ?? (string.IsNullOrWhiteSpace(req.DeviceName) ? null : req.DeviceName)
+                           ?? (scanners.Count == 1 ? scanners[0].Name : null);
                 result = await WinRtScanner.TryScanFeederAsync(req, name, maxPages);
             }
             catch (ScanException)

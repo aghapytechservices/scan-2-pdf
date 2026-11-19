@@ -12,6 +12,8 @@ export interface ScannerInfo {
 
 export interface ScanRequest {
   deviceId: string | null;
+  /** The name shown in the list; the bridge uses it if the ID is briefly missing (network scanners). */
+  deviceName?: string | null;
   source: ScanSource;
   dpi: number;
   color: ColorMode;

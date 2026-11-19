@@ -10,6 +10,7 @@ public enum PageSize { Letter, Legal, A4 }
 
 public record ScanRequest(
     string? DeviceId,
+    string? DeviceName = null, // what the add-in showed; used when the ID isn't found (network scanners come and go)
     ScanSource Source = ScanSource.Flatbed,
     int Dpi = 200,
     ColorMode Color = ColorMode.Color,
@@ -389,7 +390,7 @@ public static class WiaScanner
         }
         throw new ScanException(string.IsNullOrEmpty(deviceId)
             ? "No scanner found. Check that it is powered on and its WIA driver is installed."
-            : "The selected scanner is not available.", 404);
+            : "Windows can't see the selected scanner right now. If it's a network scanner, check it's on and awake, wait a few seconds, then try again.", 404);
     }
 
     /// <summary>Applies settings, fitting each to what the driver supports. Returns the resolution actually used.</summary>
@@ -455,7 +456,7 @@ public static class WiaScanner
         WIA_ERROR_COVER_OPEN => new ScanException("The scanner cover is open.", 409),
         WIA_S_NO_DEVICE_AVAILABLE => new ScanException("No scanner is available.", 404),
         WIA_ERROR_PAPER_EMPTY => new ScanException("The document feeder is empty.", 409),
-        _ => new ScanException($"Scanner error 0x{ex.HResult:X8}: {ex.Message}")
+        _ => ScanErrors.FromHResult(ex.HResult, ex.Message)
     };
 
     // ---- property helpers (iterate instead of indexing: most robust with late-bound WIA) ----
