@@ -21,8 +21,23 @@ public static class WinRtScanner
     public static async Task<ScanResult?> TryScanFeederAsync(ScanRequest req, string? scannerName, int maxPages)
     {
         await CoolDownAsync();
+        var stage = "finding scanners";
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            return await ScanCoreAsync(req, scannerName, maxPages, s => stage = s);
+        }
+        catch (Exception ex) when (ex is not ScanException and not OperationCanceledException)
+        {
+            AppLog.Write($"Modern scanner API: failed while {stage}, after {clock.Elapsed.TotalSeconds:0.0} s (0x{ex.HResult:X8}).");
+            throw;
+        }
+    }
 
-        var devices = await DeviceInformation.FindAllAsync(ImageScanner.GetDeviceSelector());
+    private static async Task<ScanResult?> ScanCoreAsync(ScanRequest req, string? scannerName, int maxPages, Action<string> stage)
+    {
+
+        var devices = await OrStop(DeviceInformation.FindAllAsync(ImageScanner.GetDeviceSelector()).AsTask());
         if (devices.Count == 0)
         {
             AppLog.Write("Modern scanner API: no scanners found.");
@@ -36,13 +51,15 @@ public static class WinRtScanner
             return null;
         }
 
-        var scanner = await ImageScanner.FromIdAsync(info.Id);
+        stage($"connecting to \"{info.Name}\"");
+        var scanner = await OrStop(ImageScanner.FromIdAsync(info.Id).AsTask());
         if (scanner is null || !scanner.IsScanSourceSupported(ImageScannerScanSource.Feeder))
         {
             AppLog.Write($"Modern scanner API: \"{info.Name}\" has no feeder through this API.");
             return null;
         }
 
+        stage("reading the feeder's settings");
         var cfg = scanner.FeederConfiguration;
 
         // Output format: JPEG if the scanner can produce it; otherwise a lossless format we convert below.
@@ -94,13 +111,29 @@ public static class WinRtScanner
         Directory.CreateDirectory(dir);
         try
         {
+            stage("scanning");
             var folder = await StorageFolder.GetFolderFromPathAsync(dir);
             ImageScannerScanResult result;
             try
             {
+                ScanProgress.StopToken.ThrowIfCancellationRequested();
                 var operation = scanner.ScanFilesToFolderAsync(ImageScannerScanSource.Feeder, folder);
                 operation.Progress = (_, pagesSoFar) => ScanProgress.Pages((int)pagesSoFar);
+                // Stop: cancel the scan; the scanner finishes or drops the sheet it's on.
+                using var stop = ScanProgress.StopToken.Register(() => { try { operation.Cancel(); } catch { /* already done */ } });
                 result = await WaitAsync(operation);
+            }
+            catch (OperationCanceledException)
+            {
+                // Keep the pages already saved to the folder before Stop.
+                var kept = new List<string>();
+                foreach (var file in new DirectoryInfo(dir).GetFiles().OrderBy(f => f.CreationTimeUtc).ThenBy(f => f.Name))
+                {
+                    try { kept.Add(Convert.ToBase64String(ToJpeg(await File.ReadAllBytesAsync(file.FullName), req.JpegQuality))); }
+                    catch (Exception ex) { AppLog.Write($"Skipped an unfinished page after Stop ({file.Name}).", ex); }
+                }
+                AppLog.Write($"Modern scanner API: stopped by the user; kept {kept.Count} page(s).");
+                return new ScanResult(kept, Note: ScanProgress.StoppedNote(kept.Count));
             }
             catch (Exception ex) when (ex.HResult == unchecked((int)0x80210003)) // WIA_ERROR_PAPER_EMPTY
             {
@@ -177,6 +210,21 @@ public static class WinRtScanner
     }
 
     // ---------- waiting on the scan ----------
+
+    /// <summary>Waits for a step, but gives up as soon as the user presses Stop (e.g. a slow network scanner).</summary>
+    private static async Task<T> OrStop<T>(Task<T> task)
+    {
+        var stopped = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using (ScanProgress.StopToken.Register(() => stopped.TrySetResult()))
+        {
+            if (await Task.WhenAny(task, stopped.Task) != task)
+            {
+                _ = task.ContinueWith(t => _ = t.Exception, TaskScheduler.Default); // observe a late failure
+                throw new OperationCanceledException("Stopped by the user.");
+            }
+        }
+        return await task;
+    }
 
     private static DateTime _lastFinished = DateTime.MinValue;
 

@@ -71,19 +71,31 @@ export class ScanBridge {
   }
 
   health() {
-    return this.request<{ ok: boolean; version: string; edition?: "store" | "standalone"; updateAvailable?: string | null }>("/health", {}, 3000);
+    return this.request<{
+      ok: boolean;
+      version: string;
+      edition?: "store" | "standalone";
+      updateAvailable?: string | null;
+      /** Features this bridge supports, e.g. "stop" (1.6.3+). */
+      features?: string[];
+    }>("/health", {}, 3000);
   }
 
   /** Pages received so far in the scan that's running (null if the bridge is older and doesn't report it). */
-  async progress(): Promise<{ active: boolean; pages: number; seconds: number } | null> {
+  async progress(): Promise<{ active: boolean; stopping?: boolean; pages: number; seconds: number } | null> {
     try {
-      return await this.request<{ active: boolean; pages: number; seconds: number }>("/scan/progress", {}, 2000);
+      return await this.request<{ active: boolean; stopping?: boolean; pages: number; seconds: number }>("/scan/progress", {}, 2000);
     } catch {
       return null;
     }
   }
 
   /** Store edition only: asks the bridge to show the Microsoft Store rating dialog on this PC. */
+  /** Asks the bridge to stop the scan in progress; the running scan request then returns the pages kept. */
+  cancelScan() {
+    return this.request<{ ok: boolean; stopping: boolean }>("/scan/cancel", { method: "POST" }, 5000);
+  }
+
   requestStoreReview() {
     return this.request<{ status: string }>("/store-review", { method: "POST" }, 120000);
   }

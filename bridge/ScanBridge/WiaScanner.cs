@@ -112,6 +112,12 @@ public static class WiaScanner
 
             while (pages.Count < maxPages)
             {
+                if (ScanProgress.StopRequested)
+                {
+                    AppLog.Write($"Stopped by the user after {pages.Count} page(s).");
+                    note = ScanProgress.StoppedNote(pages.Count);
+                    break;
+                }
                 object? image;
                 if (feeder && pages.Count > 0)
                 {
