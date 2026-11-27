@@ -71,6 +71,9 @@ npm run validate     # optional: Microsoft manifest validation
 
 ### 3. Sideload into Outlook
 
+> **Just want to use it?** Install Scan 2 PDF from [Microsoft Marketplace](https://marketplace.microsoft.com/en-us/product/WA200013457) (or search *Scan 2 PDF* under **Get Add-ins** in Outlook) and the bridge from the [Microsoft Store](https://apps.microsoft.com/detail/9NNN9ZTWZ9TZ?cid=github-readme). Sideloading is for development.
+
+
 - **Quickest:** `npm run sideload` (classic Outlook desktop).
 - **New Outlook / Outlook on the web:** open https://aka.ms/olksideload → *My add-ins* →
   *Add a custom add-in* → *Add from file…* → pick `addin/manifest.xml`.

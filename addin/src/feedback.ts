@@ -1,8 +1,8 @@
 // Feedback, review and share prompts for the task pane.
 // Everything is remembered only in this browser's localStorage. Nothing is sent anywhere.
 
-/** Microsoft Marketplace listing (reviews). Set once the add-in is approved; the review button stays hidden until then. */
-export const REVIEW_URL = "";
+/** Microsoft Marketplace listing, reviews tab. */
+export const REVIEW_URL = "https://marketplace.microsoft.com/en-us/product/WA200013457?tab=Reviews";
 /** Where "Send feedback" goes. An email address opens a new message; otherwise the GitHub issue form is used. */
 export const FEEDBACK_EMAIL = "";
 export const SITE_URL = "https://scan2pdf.aghapyts.com";
